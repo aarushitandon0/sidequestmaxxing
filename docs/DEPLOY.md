@@ -78,6 +78,19 @@ Read the model options + memory math in `docs/DECISIONS.md` ("Gate G1"). You cho
    It uses `LLM_HOSTPORT` automatically and writes `/srv/evals/bench_llm_<ts>.json` (ephemeral) — copy the printed JSON summary + the file into the repo's `evals/` and commit it.
 5. **Record** the printed p50/p95 and tokens/s in `docs/DECISIONS.md` ("Gate G1") with the JSON file name. Gate passes if p50 ≤ 15 s (MASTERSPEC §10.2) and memory leaves ≥ 1 GB headroom (Render **Metrics** tab).
 
+## 4c. Web app notes (after P8–P12)
+- The static build includes the MediaPipe WASM under `/mediapipe-wasm/` (~54 MB for both variants; a player downloads only one, and only after installing the verifier).
+- `VITE_GEMMA_MODEL_URL` (optional) must be an **ungated** URL you're allowed to serve (D-48). Leave it empty and players can import the model file in Settings → Photo checks.
+- Leaflet loads OSM tiles from `tile.openstreetmap.org` (attribution shown). Heavy traffic needs a tile provider per the OSM tile policy.
+
+## 4d. Manual check: airplane mode (photo never uploaded)
+1. On a WebGPU-capable phone/laptop: Settings → Photo checks → install the checker (Wi-Fi). Wait for "installed".
+2. Get a quest with a photo proof → Accept → I'm back.
+3. Turn on **airplane mode**. Take the photo → "Checking on your device…" → "Match found!" (proves no network was needed).
+4. Tap **Claim reward** → screen says "Verified — saved on your phone… claimed as soon as you're back online".
+5. Optional proof for the post: desktop Chrome DevTools → Network (filter `Fetch/XHR`, "Preserve log"), repeat 3–4 online: the only request is `POST /v1/quests/{id}/complete` with a JSON body of `verification`, `elapsed_seconds`, `screen_seconds` — no image. Screenshot it for the claims ledger.
+6. Turn airplane mode off → within seconds the reward screen appears (queued claim replayed).
+
 ## 5. After judging
 Suspend or delete `sqm-llm` and `sqm-api` (and the disk) to stop charges.
 

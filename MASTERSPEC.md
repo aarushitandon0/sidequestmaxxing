@@ -342,7 +342,7 @@ You are a strict photo checker. Task: decide if this photo shows: "{photo_prompt
 Reply with JSON only: {"match": true|false, "confidence": 0.0-1.0, "seen": "<=12 words describing the main subject"}
 If unsure, set match=false.
 ```
-Accept if `match && confidence ≥ 0.6`. Load model only after explicit user opt-in (large download; Wi-Fi advisory); cache in browser storage; show progress; never block the rest of the app.
+Accept if `match && confidence ≥ 0.6`. The model is stored in OPFS (resumable download from `VITE_GEMMA_MODEL_URL`, or imported from a file the player downloaded after accepting the Gemma terms — D-47/D-48). Load model only after explicit user opt-in (large download; Wi-Fi advisory); cache in browser storage; show progress; never block the rest of the app.
 **Honesty note (put in post):** client-side verification can be spoofed. This is a single-player game, so that's acceptable; say so.
 
 ### 7.7 Chronicler
@@ -446,6 +446,8 @@ Held-out 120 contexts. Run **baseline** (same base model, same Q4_K_M quantizati
 7. **Profile / Skill Tree**: 7 categories with levels; recent quests; settings; delete data.
 8. **Chronicle**: weekly story; Listen button; share as text.
 9. **Map (optional)**: Leaflet with the quest place pin; OSM attribution.
+
+Routes (D-49): `/` and `/story` landing; app at `/home`, `/onboarding`, `/quest`, `/walk`, `/verify`, `/reward`, `/profile`, `/chronicle`, `/settings`, `/map`; PWA `start_url` `/home`. Visual design = the project design template (D-45).
 
 ### 11.2 Non-functional
 - Installable PWA, manifest, icons, offline shell. Quest data cached after generation so Walk Mode works with no signal.

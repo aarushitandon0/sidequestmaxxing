@@ -17,3 +17,6 @@ data/overpass_*.json
 !data/overpass_sample.json
 *.tsbuildinfo
 dev-dist/
+dist-e2e/
+test-results/
+playwright-report/
