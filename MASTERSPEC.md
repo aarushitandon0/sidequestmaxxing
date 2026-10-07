@@ -191,11 +191,11 @@ Indexes:
 Index: `(device_id, created_at desc)`.
 
 ### 5.3 `completions`
-`{_id, device_id, quest_id, completed_at, verification{method, match, confidence, seen}, elapsed_seconds, screen_seconds, screen_share, within_radius: bool|null, xp_awarded, category, place_id, note}`
+`{_id, device_id, quest_id, completed_at, local_date, verification{method, match, confidence, seen}, elapsed_seconds, screen_seconds, screen_share, within_radius: bool|null, xp_awarded, category, place_id, place_name, title, note, result{…completion response…}}`
 Index: `(device_id, completed_at desc)`; unique `(quest_id)`.
 
 ### 5.4 `users` (anonymous devices)
-`{_id: device_id, created_at, persona, interests[], default_radius_m, skills{category: xp}, total_xp, streak_days, last_completed_date, settings{safe_mode: true, voice: true}}`
+`{_id: device_id, created_at, persona, interests[], default_radius_m, skills{category: xp}, total_xp, streak_days, last_completed_date (local YYYY-MM-DD), utc_offset_min, settings{safe_mode: true, voice: true}}`
 
 ### 5.5 `memories`
 `{_id: quest_id, device_id, ts, text, category, place_id, embedding[384], kind: "completed"|"skipped"}`
@@ -222,6 +222,7 @@ Base: `/v1`. JSON only (except TTS audio). Header `X-Device-Id: <uuid v4>` requi
 | POST | `/v1/quests/{id}/skip` | Skip (no penalty; used for memory) |
 | GET | `/v1/profile` | XP, skills, streak, recent completions |
 | PUT | `/v1/profile/settings` | persona, interests, radius, voice |
+| DELETE | `/v1/profile` | Delete all data for this device (204) |
 | POST | `/v1/recap/weekly` | Generate/fetch weekly Chronicle |
 | POST | `/v1/tts` | Proxy to ElevenLabs → `audio/mpeg` |
 | GET | `/v1/places/near` | (debug/demo) candidate places for a point |

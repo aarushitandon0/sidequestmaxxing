@@ -122,3 +122,12 @@ def title_for(category: Category, level: int) -> str | None:
         return None
     titles = TITLES[category]
     return titles[min(level, len(titles)) - 1]
+
+
+def category_xp_for_level(level: int) -> int:
+    """Minimum category XP for `level` (inverse of category_level)."""
+    return 40 * level * level
+
+
+def overall_xp_for_level(level: int) -> int:
+    return 120 * level * level

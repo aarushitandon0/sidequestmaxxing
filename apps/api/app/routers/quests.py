@@ -19,9 +19,11 @@ from app.deps import (
     get_weather_client_dep,
 )
 from app.errors import ApiError, db_unavailable
+from app.models.profile import CompletionResult
 from app.models.quest import Quest, QuestDraft
-from app.models.requests import QuestRequest
-from app.ratelimit import GENERATE_LIMIT, QUEST_ACTION_LIMIT, limiter
+from app.models.requests import CompletionRequest, QuestRequest
+from app.ratelimit import COMPLETE_LIMIT, GENERATE_LIMIT, QUEST_ACTION_LIMIT, limiter
+from app.services.completion import complete_quest
 from app.services.db import Doc
 from app.services.embeddings import Embedder
 from app.services.llm_client import LLMClient
@@ -169,3 +171,21 @@ async def skip(
     except PyMongoError as exc:  # memory is best-effort; the skip itself succeeded
         log.warning("skip memory failed", extra={"error_type": type(exc).__name__})
     return _state(moved)
+
+
+@router.post("/{quest_id}/complete", response_model=CompletionResult)
+@limiter.limit(COMPLETE_LIMIT)
+async def complete(
+    request: Request,
+    quest_id: str,
+    body: CompletionRequest,
+    device_id: DeviceId,
+    db: Db,
+    embedder: EmbedderDep,
+    now: Now,
+) -> CompletionResult:
+    """Verification result only — never a photo (there is no image upload endpoint)."""
+    try:
+        return await complete_quest(db, embedder, device_id, quest_id, body, now)
+    except PyMongoError as exc:
+        raise db_unavailable() from exc

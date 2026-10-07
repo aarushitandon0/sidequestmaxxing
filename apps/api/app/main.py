@@ -14,7 +14,7 @@ from app.logging_setup import configure_logging
 from app.middleware import AccessLogMiddleware, BodySizeLimitMiddleware
 from app.observability import init_sentry
 from app.ratelimit import limiter
-from app.routers import places, quests
+from app.routers import places, profile, quests
 from app.services.db import close_client, get_database, ping
 from app.services.llm_health import llm_status
 
@@ -55,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(places.router)
     app.include_router(quests.router)
+    app.include_router(profile.router)
     return app
 
 

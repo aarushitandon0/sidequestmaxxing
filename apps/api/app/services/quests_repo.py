@@ -33,6 +33,11 @@ def request_digest(req: QuestRequest) -> str:
     return hashlib.sha256(raw).hexdigest()[:16]
 
 
+def utc_offset_minutes(req: QuestRequest) -> int:
+    offset = req.local_time_iso.utcoffset()
+    return round(offset.total_seconds() / 60) if offset is not None else 0
+
+
 def new_quest_doc(
     quest: Quest,
     device_id: str,
@@ -53,6 +58,9 @@ def new_quest_doc(
         "status": "offered",
         "accepted_at": None,
         "expires_at": now + QUEST_TTL,
+        # The player's UTC offset (minutes), so completion can find their local date for
+        # streaks and the daily XP cap without asking for location or time again.
+        "utc_offset_min": utc_offset_minutes(req),
     }
 
 
