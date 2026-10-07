@@ -18,8 +18,12 @@ from app.deps import DEVICE_HEADER
 SCRUBBED = "[scrubbed]"
 _COORD_KEYS = {"lat", "lng", "lon", "latitude", "longitude", "coordinates", "checkin", "loc"}
 _DEVICE_KEYS = {"device_id", DEVICE_HEADER.lower()}
-_TEXT_KEYS = {"note", "interests", "seen", "query_string", "data", "cookies"}
+# Note: span/breadcrumb "data" dicts are walked (not blanked) so token counts survive;
+# only the request body (`request.data`) is dropped wholesale in scrub_event.
+_TEXT_KEYS = {"note", "interests", "seen", "query_string", "cookies", "http.query", "query"}
 _COORD_PAIR = re.compile(r"-?\d{1,3}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}")
+# Query strings inside any URL-ish string (span descriptions, breadcrumbs): they carry lat/lng.
+_URL_QUERY = re.compile(r"(https?://[^\s?#]+)\?[^\s#]*")
 
 
 def hash_device_id(device_id: str) -> str:
@@ -40,31 +44,38 @@ def _scrub(value: Any, key: str | None = None) -> Any:
             return [[n, _scrub(v, n if isinstance(n, str) else None)] for n, v in value]
         return [_scrub(i) for i in value]
     if isinstance(value, str):
-        return _COORD_PAIR.sub(SCRUBBED, value)
+        return _COORD_PAIR.sub(SCRUBBED, _URL_QUERY.sub(r"\1", value))
     return value
 
 
 def scrub_event(event: dict[str, Any], _hint: dict[str, Any] | None = None) -> dict[str, Any]:
     scrubbed: dict[str, Any] = _scrub(event)
     request = scrubbed.get("request")
-    if isinstance(request, dict) and isinstance(request.get("url"), str):
-        request["url"] = request["url"].split("?", 1)[0]
+    if isinstance(request, dict):
+        if isinstance(request.get("url"), str):
+            request["url"] = request["url"].split("?", 1)[0]
+        if "data" in request:
+            request["data"] = SCRUBBED
     return scrubbed
+
+
+def sentry_options(settings: Settings) -> dict[str, Any]:
+    return {
+        "dsn": settings.sentry_dsn,
+        "environment": settings.env,
+        "release": settings.git_sha,
+        "traces_sample_rate": settings.sentry_traces_sample_rate,
+        "send_default_pii": False,
+        "max_request_body_size": "never",
+        "before_send": scrub_event,
+        "before_send_transaction": scrub_event,
+    }
 
 
 def init_sentry(settings: Settings) -> bool:
     if not settings.sentry_dsn:
         return False
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        environment=settings.env,
-        release=settings.git_sha,
-        traces_sample_rate=settings.sentry_traces_sample_rate,
-        send_default_pii=False,
-        max_request_body_size="never",
-        before_send=scrub_event,  # type: ignore[arg-type]
-        before_send_transaction=scrub_event,  # type: ignore[arg-type]
-    )
+    sentry_sdk.init(**sentry_options(settings))
     return True
 
 

@@ -44,3 +44,19 @@ def test_url_logging_third_parties_are_quiet(caplog: pytest.LogCaptureFixture) -
         assert not logging.getLogger(name).isEnabledFor(logging.INFO), name
     logging.getLogger("httpx").info("HTTP Request: GET https://x/?latitude=18.52&longitude=73.85")
     assert "latitude" not in caplog.text
+
+
+def test_scrub_strips_query_strings_from_span_data_and_descriptions() -> None:
+    """Sentry's httpx integration records `http.query` on outgoing spans (Open-Meteo has lat/lng)."""
+    event = {
+        "spans": [
+            {
+                "description": "GET https://api.open-meteo.com/v1/forecast?latitude=18.52&longitude=73.86",
+                "data": {"http.query": "latitude=18.52&longitude=73.86", "url": "https://x/y"},
+            }
+        ],
+        "breadcrumbs": {"values": [{"data": {"url": "https://h/p?lat=18.52&lng=73.85"}}]},
+    }
+    out = scrub_event(event)
+    assert "18.52" not in str(out)
+    assert out["spans"][0]["description"] == "GET https://api.open-meteo.com/v1/forecast"
