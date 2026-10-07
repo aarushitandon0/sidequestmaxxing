@@ -34,18 +34,25 @@ class SampleSettings:
 class TinkerChat:
     """Chat-style sampling from a base model or a trained checkpoint."""
 
-    def __init__(self, model_name: str, model_path: str | None = None, service: Any = None) -> None:
+    def __init__(
+        self,
+        model_name: str,
+        model_path: str | None = None,
+        service: Any = None,
+        client: Any = None,
+    ) -> None:
         import tinker
         from tinker_cookbook import renderers
         from tinker_cookbook.tokenizer_utils import get_tokenizer
 
         self.model_name = model_name
         self.service = service or tinker.ServiceClient()
-        self.client = (
-            self.service.create_sampling_client(model_path=model_path)
-            if model_path
-            else self.service.create_sampling_client(base_model=model_name)
-        )
+        if client is not None:  # e.g. training_client.save_weights_and_get_sampling_client()
+            self.client = client
+        elif model_path:
+            self.client = self.service.create_sampling_client(model_path=model_path)
+        else:
+            self.client = self.service.create_sampling_client(base_model=model_name)
         self.renderer_name = pick_renderer_name(model_name)
         self.renderer = renderers.get_renderer(self.renderer_name, get_tokenizer(model_name))
         self._types = tinker.types
@@ -57,17 +64,22 @@ class TinkerChat:
 
         prompt = self.renderer.build_generation_prompt(messages)
         params = self._types.SamplingParams(
-            max_tokens=s.max_tokens, temperature=s.temperature, top_p=s.top_p, seed=s.seed,
+            max_tokens=s.max_tokens,
+            temperature=s.temperature,
+            top_p=s.top_p,
+            seed=s.seed,
             stop=self.renderer.get_stop_sequences(),
-        )  # fmt: skip
+        )
         res = await self.client.sample_async(prompt=prompt, num_samples=n, sampling_params=params)
         out: list[dict[str, Any]] = []
         for seq in res.sequences:
             message, _ = self.renderer.parse_response(seq.tokens)
-            out.append({
-                "text": get_text_content(message),
-                "prompt_tokens": prompt.length,
-                "completion_tokens": len(seq.tokens),
-                "stop_reason": str(seq.stop_reason),
-            })  # fmt: skip
+            out.append(
+                {
+                    "text": get_text_content(message),
+                    "prompt_tokens": prompt.length,
+                    "completion_tokens": len(seq.tokens),
+                    "stop_reason": str(seq.stop_reason),
+                }
+            )
         return out

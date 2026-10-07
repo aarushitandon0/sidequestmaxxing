@@ -17,3 +17,12 @@ def _runs_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(common, "RUNS", tmp_path / "runs")
     os.environ.setdefault("ENV", "test")
+
+
+@pytest.fixture(scope="session")
+def ctx_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    import make_contexts
+
+    out = tmp_path_factory.mktemp("ctx")
+    assert make_contexts.main(["--synthetic", "--scale", "0.1", "--out", str(out)]) == 0
+    return out

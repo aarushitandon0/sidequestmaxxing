@@ -57,8 +57,13 @@ def estimate(cfg: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
         price.get("sample"), int | float
     ):
         usd = round(prefill / 1e6 * price["prefill"] + sample / 1e6 * price["sample"], 2)
-    return {"contexts": n_contexts, "samples": n_contexts * k, "prefill_tokens": prefill,
-            "sample_tokens": sample, "usd_estimate": usd}  # fmt: skip
+    return {
+        "contexts": n_contexts,
+        "samples": n_contexts * k,
+        "prefill_tokens": prefill,
+        "sample_tokens": sample,
+        "usd_estimate": usd,
+    }
 
 
 async def run_tinker(rows: list[dict[str, Any]], cfg: dict[str, Any]) -> list[dict[str, Any]]:
@@ -79,9 +84,15 @@ async def run_tinker(rows: list[dict[str, Any]], cfg: dict[str, Any]) -> list[di
                 out.append({"context_id": row["id"], "error": type(exc).__name__})
                 return
         for j, smp in enumerate(samples):
-            out.append({"context_id": row["id"], "sample": j, "raw": smp["text"],
-                        "prompt_tokens": smp["prompt_tokens"],
-                        "completion_tokens": smp["completion_tokens"]})  # fmt: skip
+            out.append(
+                {
+                    "context_id": row["id"],
+                    "sample": j,
+                    "raw": smp["text"],
+                    "prompt_tokens": smp["prompt_tokens"],
+                    "completion_tokens": smp["completion_tokens"],
+                }
+            )
 
     await asyncio.gather(*(one(r) for r in rows))
     out.sort(key=lambda x: (x["context_id"], x.get("sample", -1)))
@@ -110,8 +121,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--all", action="store_true", help="every context in the split")
     ap.add_argument("--backend", choices=["tinker", "fallback"], default="tinker")
     ap.add_argument("--estimate", action="store_true", help="print the cost estimate and exit")
-    ap.add_argument("--i-approve-cost", action="store_true",
-                    help="required for more than 20 contexts on the paid backend")  # fmt: skip
+    ap.add_argument(
+        "--i-approve-cost",
+        action="store_true",
+        help="required for more than 20 contexts on the paid backend",
+    )
     args = ap.parse_args(argv)
 
     cfg = load_config(CONFIG)
@@ -124,12 +138,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.backend == "tinker" and len(rows) > DRY_RUN_LIMIT:
         if not args.i_approve_cost:
-            print(f"Refusing a paid run over {DRY_RUN_LIMIT} contexts without --i-approve-cost.",
-                  file=sys.stderr)  # fmt: skip
+            print(
+                f"Refusing a paid run over {DRY_RUN_LIMIT} contexts without --i-approve-cost.",
+                file=sys.stderr,
+            )
             return 2
         if est["usd_estimate"] is None:
-            print("Fill price_per_mtok in configs/teacher.json (from Tinker's pricing page) first.",
-                  file=sys.stderr)  # fmt: skip
+            print(
+                "Fill price_per_mtok in configs/teacher.json (from Tinker's pricing page) first.",
+                file=sys.stderr,
+            )
             return 2
 
     samples = (
@@ -140,15 +158,33 @@ def main(argv: list[str] | None = None) -> int:
     errors = sum("error" in s for s in samples)
     print(f"wrote {len(samples)} samples ({errors} errors) → {path}")
     name = f"teacher_{args.split}_{args.backend}_{utc_stamp()}"
-    meta = {"stage": "gen_teacher", "backend": args.backend, "split": args.split,
-            "contexts": len(rows), "samples": len(samples), "errors": errors, "estimate": est,
-            "teacher": {k: cfg[k] for k in ("model_name", "license", "temperature", "top_p",
-                                            "max_tokens", "samples_per_context")},
-            "prompt_hashes": committed_hashes()}  # fmt: skip
+    meta = {
+        "stage": "gen_teacher",
+        "backend": args.backend,
+        "split": args.split,
+        "contexts": len(rows),
+        "samples": len(samples),
+        "errors": errors,
+        "estimate": est,
+        "teacher": {
+            k: cfg[k]
+            for k in (
+                "model_name",
+                "license",
+                "temperature",
+                "top_p",
+                "max_tokens",
+                "samples_per_context",
+            )
+        },
+        "prompt_hashes": committed_hashes(),
+    }
     save_run_metadata(name, meta)
     if args.backend == "tinker":
-        append_runs_md(f"- `{name}`: teacher `{cfg['model_name']}` on {len(rows)} {args.split} "
-                       f"contexts → {len(samples)} samples, {errors} errors.")  # fmt: skip
+        append_runs_md(
+            f"- `{name}`: teacher `{cfg['model_name']}` on {len(rows)} {args.split} "
+            f"contexts → {len(samples)} samples, {errors} errors."
+        )
     return 0
 
 

@@ -32,8 +32,20 @@ CONFIG = Path(__file__).parent / "configs" / "data.json"
 IST = timezone(timedelta(hours=5, minutes=30))
 
 # Same keyword list the app offers (apps/web/src/lib/prefs.ts) — already "sanitized" form.
-INTERESTS = ["birds", "trees", "history", "street food", "architecture", "art", "sketching",
-             "coffee", "markets", "running", "quiet spots", "geology"]  # fmt: skip
+INTERESTS = [
+    "birds",
+    "trees",
+    "history",
+    "street food",
+    "architecture",
+    "art",
+    "sketching",
+    "coffee",
+    "markets",
+    "running",
+    "quiet spots",
+    "geology",
+]
 
 WEATHER: list[tuple[str, float, int, int | None, bool]] = [
     # summary, weight, temp_c, precip %, thunderstorm
@@ -64,13 +76,36 @@ def place_to_row(doc: dict[str, Any]) -> dict[str, Any]:
 
 
 SYN_KINDS = [
-    ("park", "Park", False), ("garden", "Garden", False), ("viewpoint", "Viewpoint", False),
-    ("heritage", "Old Gate", False), ("artwork", "Mural", False), ("market", "Market", False),
-    ("cafe", "Cafe", True), ("museum", "Museum", True), ("library", "Library", True),
-    ("temple", "Temple", False), ("water", "Lake", False), ("peak", "Hill", False),
-]  # fmt: skip
-SYN_NAMES = ["Banyan", "Riverside", "Old Town", "Hilltop", "Lotus", "Maple", "Sunset", "Lantern",
-             "Stonebridge", "Peacock", "Cedar", "Monsoon", "Harbor", "Willow", "Kite"]  # fmt: skip
+    ("park", "Park", False),
+    ("garden", "Garden", False),
+    ("viewpoint", "Viewpoint", False),
+    ("heritage", "Old Gate", False),
+    ("artwork", "Mural", False),
+    ("market", "Market", False),
+    ("cafe", "Cafe", True),
+    ("museum", "Museum", True),
+    ("library", "Library", True),
+    ("temple", "Temple", False),
+    ("water", "Lake", False),
+    ("peak", "Hill", False),
+]
+SYN_NAMES = [
+    "Banyan",
+    "Riverside",
+    "Old Town",
+    "Hilltop",
+    "Lotus",
+    "Maple",
+    "Sunset",
+    "Lantern",
+    "Stonebridge",
+    "Peacock",
+    "Cedar",
+    "Monsoon",
+    "Harbor",
+    "Willow",
+    "Kite",
+]
 
 
 def synthetic_places(seed: int, areas: int = 40, per_area: int = 16) -> list[dict[str, Any]]:
@@ -82,11 +117,19 @@ def synthetic_places(seed: int, areas: int = 40, per_area: int = 16) -> list[dic
         for j in range(per_area):
             kind, noun, indoor = r.choice(SYN_KINDS)
             lat, lng = clat + r.uniform(-0.015, 0.015), clng + r.uniform(-0.015, 0.015)
-            out.append({
-                "id": f"syn/{a}-{j}", "name": f"{r.choice(SYN_NAMES)} {noun}", "kind": kind,
-                "lat": round(lat, 5), "lng": round(lng, 5), "tags_summary": "synthetic",
-                "indoor": indoor, "needs_daylight": not indoor, "cell5": cell5(lat, lng),
-            })  # fmt: skip
+            out.append(
+                {
+                    "id": f"syn/{a}-{j}",
+                    "name": f"{r.choice(SYN_NAMES)} {noun}",
+                    "kind": kind,
+                    "lat": round(lat, 5),
+                    "lng": round(lng, 5),
+                    "tags_summary": "synthetic",
+                    "indoor": indoor,
+                    "needs_daylight": not indoor,
+                    "cell5": cell5(lat, lng),
+                }
+            )
     return out
 
 
@@ -109,8 +152,12 @@ def sample_weather(r: Any, force_indoor: bool) -> Weather:
         summary, _, temp, precip, storm = r.choices(WEATHER, weights=[w[1] for w in WEATHER])[0]
     if summary == "unknown":
         return Weather()
-    return Weather(summary=summary, temp_c=float(temp + r.randint(-3, 3)), precip_prob=precip,
-                   thunderstorm=storm)  # fmt: skip
+    return Weather(
+        summary=summary,
+        temp_c=float(temp + r.randint(-3, 3)),
+        precip_prob=precip,
+        thunderstorm=storm,
+    )
 
 
 def sample_context(r: Any, force_indoor: bool) -> QuestContext:
@@ -126,14 +173,27 @@ def sample_context(r: Any, force_indoor: bool) -> QuestContext:
     weather = sample_weather(r, force_indoor)
     reasons = indoor_reasons(weather, left)
     return QuestContext(
-        local_time=now, part_of_day=part_of_day(now.hour), weekday=now.strftime("%A"),
-        sunrise=sunrise, sunset=sunset, daylight_minutes_left=left, weather=weather,
-        indoor_only=bool(reasons), indoor_reasons=reasons,
-    )  # fmt: skip
+        local_time=now,
+        part_of_day=part_of_day(now.hour),
+        weekday=now.strftime("%A"),
+        sunrise=sunrise,
+        sunset=sunset,
+        daylight_minutes_left=left,
+        weather=weather,
+        indoor_only=bool(reasons),
+        indoor_reasons=reasons,
+    )
 
 
-def candidates_for(r: Any, places: list[dict[str, Any]], anchor: dict[str, Any], radius: int,
-                   ctx: QuestContext, minutes: int, limit: int) -> list[Candidate]:  # fmt: skip
+def candidates_for(
+    r: Any,
+    places: list[dict[str, Any]],
+    anchor: dict[str, Any],
+    radius: int,
+    ctx: QuestContext,
+    minutes: int,
+    limit: int,
+) -> list[Candidate]:
     # A user point near the anchor (never stored: only distances leave this function).
     bearing, dist = r.uniform(0, 2 * math.pi), r.uniform(150, min(radius, 2500))
     ulat = anchor["lat"] + (dist * math.cos(bearing)) / 111_320
@@ -142,19 +202,28 @@ def candidates_for(r: Any, places: list[dict[str, Any]], anchor: dict[str, Any],
     for p in places:
         d = haversine_m(ulat, ulng, p["lat"], p["lng"])
         if d <= radius:
-            near.append(Candidate(
-                id=p["id"], name=p["name"], kind=p["kind"], distance_m=int(d),
-                tags_summary=p["tags_summary"], indoor=p["indoor"],
-                needs_daylight=p["needs_daylight"], lat=round(p["lat"], 3), lng=round(p["lng"], 3),
-                score=round(r.uniform(0.55, 0.95), 3),
-            ))  # fmt: skip
+            near.append(
+                Candidate(
+                    id=p["id"],
+                    name=p["name"],
+                    kind=p["kind"],
+                    distance_m=int(d),
+                    tags_summary=p["tags_summary"],
+                    indoor=p["indoor"],
+                    needs_daylight=p["needs_daylight"],
+                    lat=round(p["lat"], 3),
+                    lng=round(p["lng"], 3),
+                    score=round(r.uniform(0.55, 0.95), 3),
+                )
+            )
     near.sort(key=lambda c: c.score or 0, reverse=True)  # stands in for vector rank
     kept, _ = safety_filter(near, ctx, minutes)
     return diversify(kept, limit)
 
 
-def make_split(split: str, n: int, places: list[dict[str, Any]], cfg: dict[str, Any],
-               seed: int) -> list[dict[str, Any]]:  # fmt: skip
+def make_split(
+    split: str, n: int, places: list[dict[str, Any]], cfg: dict[str, Any], seed: int
+) -> list[dict[str, Any]]:
     r = rng(seed, "contexts", split)
     out: list[dict[str, Any]] = []
     attempts = 0
@@ -172,24 +241,29 @@ def make_split(split: str, n: int, places: list[dict[str, Any]], cfg: dict[str, 
         minutes = r.choice(cfg["minutes_options"])
         radius = r.choice(cfg["radius_options"])
         anchor = r.choice(places)
-        cands = [] if force_empty else candidates_for(r, places, anchor, radius, ctx, minutes,
-                                                      cfg["max_candidates"])  # fmt: skip
+        cands = (
+            []
+            if force_empty
+            else candidates_for(r, places, anchor, radius, ctx, minutes, cfg["max_candidates"])
+        )
         if not force_empty and not cands:
             continue  # empties come only from the planned 8%
-        out.append({
-            "id": f"{split}-{len(out):05d}",
-            "split": split,
-            "area": anchor["cell5"],
-            "input": {
-                "context": ctx.model_dump(mode="json"),
-                "persona": r.choice(PERSONAS),
-                "mood": r.choice(MOODS),
-                "interests": r.sample(INTERESTS, r.choice([0, 0, 1, 2, 2, 3])),
-                "minutes_available": minutes,
-                "recent_categories": r.sample(list(CATEGORIES), r.choice([0, 1, 1, 2, 3])),
-                "candidates": [c.model_dump(mode="json") for c in cands],
-            },
-        })  # fmt: skip
+        out.append(
+            {
+                "id": f"{split}-{len(out):05d}",
+                "split": split,
+                "area": anchor["cell5"],
+                "input": {
+                    "context": ctx.model_dump(mode="json"),
+                    "persona": r.choice(PERSONAS),
+                    "mood": r.choice(MOODS),
+                    "interests": r.sample(INTERESTS, r.choice([0, 0, 1, 2, 2, 3])),
+                    "minutes_available": minutes,
+                    "recent_categories": r.sample(list(CATEGORIES), r.choice([0, 1, 1, 2, 3])),
+                    "candidates": [c.model_dump(mode="json") for c in cands],
+                },
+            }
+        )
     if len(out) < n:
         raise SystemExit(f"{split}: only {len(out)}/{n} contexts — not enough places in this split")
     return out
@@ -223,8 +297,10 @@ def main(argv: list[str] | None = None) -> int:
     elif args.places.exists():
         places = [place_to_row(d) if "loc" in d else d for d in read_jsonl(args.places)]
     else:
-        print(f"{args.places} not found — run training/dump_places.py (or use --synthetic).",
-              file=sys.stderr)  # fmt: skip
+        print(
+            f"{args.places} not found — run training/dump_places.py (or use --synthetic).",
+            file=sys.stderr,
+        )
         return 2
 
     by_cell: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -242,10 +318,18 @@ def main(argv: list[str] | None = None) -> int:
         stats[split] = {**summarize(rows), "places": len(pool)}
         print(f"{split}: {stats[split]}")
 
-    save_run_metadata(f"contexts_{'synthetic' if args.synthetic else 'osm'}", {
-        "stage": "make_contexts", "seed": seed, "synthetic": args.synthetic, "scale": args.scale,
-        "places": len(places), "areas": len(by_cell), "splits": stats,
-    })  # fmt: skip
+    save_run_metadata(
+        f"contexts_{'synthetic' if args.synthetic else 'osm'}",
+        {
+            "stage": "make_contexts",
+            "seed": seed,
+            "synthetic": args.synthetic,
+            "scale": args.scale,
+            "places": len(places),
+            "areas": len(by_cell),
+            "splits": stats,
+        },
+    )
     return 0
 
 

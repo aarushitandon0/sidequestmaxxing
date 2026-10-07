@@ -5,8 +5,6 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 import filter as filt
 import gen_teacher
 import make_contexts
@@ -17,13 +15,6 @@ from common import read_jsonl
 
 from app.prompts import load_prompt
 from app.validators.core import validate_quest
-
-
-@pytest.fixture(scope="module")
-def ctx_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    out = tmp_path_factory.mktemp("ctx")
-    assert make_contexts.main(["--synthetic", "--scale", "0.1", "--out", str(out)]) == 0
-    return out
 
 
 def rows(path: Path) -> list[dict[str, Any]]:
@@ -38,8 +29,10 @@ def test_contexts_are_deterministic_and_area_split(ctx_dir: Path, tmp_path: Path
     areas = {s: {r["area"] for r in rows(ctx_dir / f"{s}.jsonl")} for s in ("train", "val", "test")}
     assert not areas["train"] & areas["test"]
     assert not areas["train"] & areas["val"]
-    places = {s: {c["id"] for r in rows(ctx_dir / f"{s}.jsonl") for c in r["input"]["candidates"]}
-              for s in ("train", "test")}  # fmt: skip
+    places = {
+        s: {c["id"] for r in rows(ctx_dir / f"{s}.jsonl") for c in r["input"]["candidates"]}
+        for s in ("train", "test")
+    }
     assert not places["train"] & places["test"], "test places must be unseen in training"
 
 
@@ -82,8 +75,18 @@ def test_paid_runs_are_gated(ctx_dir: Path, tmp_path: Path) -> None:
 
 def test_filter_keeps_only_valid_balanced_rows(ctx_dir: Path, tmp_path: Path) -> None:
     teacher = tmp_path / "teacher"
-    gen_teacher.main(["--contexts", str(ctx_dir), "--out", str(teacher), "--backend", "fallback",
-                      "--limit", "300"])  # fmt: skip
+    gen_teacher.main(
+        [
+            "--contexts",
+            str(ctx_dir),
+            "--out",
+            str(teacher),
+            "--backend",
+            "fallback",
+            "--limit",
+            "300",
+        ]
+    )
     samples = rows(teacher / "train.fallback.jsonl")
     # Corrupt some samples the way a real teacher might fail.
     samples[0]["raw"] = "Sure! Here is your quest: {not json"

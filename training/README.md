@@ -20,8 +20,9 @@ python -m pytest -q training/tests                # pipeline tests (free backend
 | 5. Filter + stats | `python training/filter.py --split train --teacher data/teacher/train.tinker.jsonl` | no |
 | 6. Full teacher run | `… --all --i-approve-cost` (refuses until prices are filled in `configs/teacher.json`) | **yes** |
 | 7. Recap examples | `python training/make_recap_examples.py --backend tinker --limit 20` | yes |
-| 8. SFT | `python training/train_sft.py --smoke --go` (P15) | **yes** |
-| 9. Eval | `python training/eval_harness.py …` (P16) | no (your llama.cpp server) |
+| 8. SFT plan | `python training/train_sft.py --smoke` (prints rows/tokens, trains nothing) | no |
+| 9. SFT smoke run | `python training/train_sft.py --smoke --go` (200 rows, 1 epoch, 1 LR) — show metrics, then decide | **yes**, ≈ $0.10 |
+| 10. SFT sweep | `python training/train_sft.py --go` (3 LRs x 3 epochs, best by val pass-rate) | **yes**, ≈ $13 |
 
 Dry runs without Atlas or Tinker: add `--synthetic` to steps 2/7, `--backend fallback` to step
 4 and `--embedder hash` to step 5. Their outputs are labelled and must not be used for training.

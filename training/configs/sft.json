@@ -1,0 +1,16 @@
+{
+  "_comment": "LoRA SFT on Tinker (P15, MASTERSPEC §10.4). Start from Cookbook defaults: LoRA rank 32, LR from hyperparam_utils.get_lr(base_model) — the sweep multiplies it. Adam betas from recipes/sl_loop.py.",
+  "base_model": "Qwen/Qwen3.5-4B",
+  "lora_rank": 32,
+  "lr_multipliers": [0.5, 1.0, 2.0],
+  "learning_rate": null,
+  "epochs": 3,
+  "batch_size": 32,
+  "max_length": 2048,
+  "seed": 0,
+  "recap_share": 0.15,
+  "val_pass_rate_contexts": 100,
+  "sampling": {"temperature": 0.8, "top_p": 0.95, "max_tokens": 380},
+  "smoke": {"train_examples": 200, "epochs": 1, "lr_multipliers": [1.0], "val_pass_rate_contexts": 20},
+  "checkpoint_ttl_seconds": 1209600
+}

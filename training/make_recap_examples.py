@@ -47,17 +47,25 @@ def week_log(r: Any, places: list[dict[str, Any]]) -> RecapInput:
     for d in sorted(days):
         cat = r.choice(CATEGORIES)
         place = r.choice(places) if r.random() > 0.12 else None
-        comps.append(RecapCompletion(
-            title=r.choice(TITLE_WORDS[cat]), category=cat,
-            place_name=place["name"] if place else None,
-            minutes_outside=r.randint(8, 95), day=DAYS[d],
-        ))  # fmt: skip
+        comps.append(
+            RecapCompletion(
+                title=r.choice(TITLE_WORDS[cat]),
+                category=cat,
+                place_name=place["name"] if place else None,
+                minutes_outside=r.randint(8, 95),
+                day=DAYS[d],
+            )
+        )
     return RecapInput(persona=r.choice(PERSONAS), week=r.choice(WEEKS), completions=comps)
 
 
 def as_record(i: int, split: str, inp: RecapInput) -> dict[str, Any]:
-    return {"id": f"recap-{split}-{i:04d}", "persona": inp.persona, "week": inp.week,
-            "completions": [c.__dict__ for c in inp.completions]}  # fmt: skip
+    return {
+        "id": f"recap-{split}-{i:04d}",
+        "persona": inp.persona,
+        "week": inp.week,
+        "completions": [c.__dict__ for c in inp.completions],
+    }
 
 
 def from_record(rec: dict[str, Any]) -> RecapInput:
@@ -102,8 +110,10 @@ def main(argv: list[str] | None = None) -> int:
     seed = cfg["seed"]
     if args.synthetic or not args.places.exists():
         if not args.synthetic:
-            print(f"{args.places} not found — run training/dump_places.py or pass --synthetic.",
-                  file=sys.stderr)  # fmt: skip
+            print(
+                f"{args.places} not found — run training/dump_places.py or pass --synthetic.",
+                file=sys.stderr,
+            )
             return 2
         places = synthetic_places(seed)
     else:

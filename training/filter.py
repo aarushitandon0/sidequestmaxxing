@@ -108,15 +108,21 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         kept_vecs[persona].append(vec)
         per_context[record["id"]] += 1
         msgs = messages(record)
-        kept.append({
-            "id": f"{record['id']}-s{s.get('sample', 0)}",
-            "context_id": record["id"],
-            "messages": [*msgs, {"role": "assistant", "content": canonical(q)}],
-            "meta": {"persona": persona, "category": q.category,
-                     "rarity": rarity_for(q.est_minutes, distance_of(q, record)),
-                     "placeless": q.place_id is None, "method": q.verification.method,
-                     "indoor_only": record["input"]["context"]["indoor_only"]},
-        })  # fmt: skip
+        kept.append(
+            {
+                "id": f"{record['id']}-s{s.get('sample', 0)}",
+                "context_id": record["id"],
+                "messages": [*msgs, {"role": "assistant", "content": canonical(q)}],
+                "meta": {
+                    "persona": persona,
+                    "category": q.category,
+                    "rarity": rarity_for(q.est_minutes, distance_of(q, record)),
+                    "placeless": q.place_id is None,
+                    "method": q.verification.method,
+                    "indoor_only": record["input"]["context"]["indoor_only"],
+                },
+            }
+        )
 
     seed = cfg["seed"]
     kept, cat_drop = cap_shares(kept, "category", CATEGORY_CAP, 7, seed)
@@ -128,22 +134,35 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         return dict(sorted(Counter(str(r["meta"][key]) for r in kept).items()))
 
     return {
-        "split": args.split, "teacher_file": str(args.teacher), "embedder": embedder_name,
-        "samples": len(samples), "passed_validators": len(passed), "kept": len(kept),
+        "split": args.split,
+        "teacher_file": str(args.teacher),
+        "embedder": embedder_name,
+        "samples": len(samples),
+        "passed_validators": len(passed),
+        "kept": len(kept),
         "pass_rate": round(len(passed) / len(samples), 3) if samples else 0.0,
-        "dropped": {"duplicate": dup, "extra_per_context": over_context,
-                    "category_cap": cat_drop, "persona_cap": per_drop},
+        "dropped": {
+            "duplicate": dup,
+            "extra_per_context": over_context,
+            "category_cap": cat_drop,
+            "persona_cap": per_drop,
+        },
         "rejection_reasons": dict(reasons.most_common()),
-        "by_persona": count("persona"), "by_category": count("category"),
-        "by_rarity": count("rarity"), "by_method": count("method"),
-        "placeless": sum(r["meta"]["placeless"] for r in kept), "out": str(out),
-    }  # fmt: skip
+        "by_persona": count("persona"),
+        "by_category": count("category"),
+        "by_rarity": count("rarity"),
+        "by_method": count("method"),
+        "placeless": sum(r["meta"]["placeless"] for r in kept),
+        "out": str(out),
+    }
 
 
 def print_stats(st: dict[str, Any]) -> None:
     print(f"\n## Filter stats — {st['split']} ({st['embedder']})")
-    print(f"samples {st['samples']} → passed V1-V11 {st['passed_validators']} "
-          f"({st['pass_rate']:.1%}) → kept {st['kept']}")  # fmt: skip
+    print(
+        f"samples {st['samples']} → passed V1-V11 {st['passed_validators']} "
+        f"({st['pass_rate']:.1%}) → kept {st['kept']}"
+    )
     for section in (
         "dropped",
         "rejection_reasons",
