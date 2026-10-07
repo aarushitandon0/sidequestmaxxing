@@ -217,7 +217,7 @@ async def test_reasoning_block_and_fences_are_tolerated() -> None:
     [
         ('{"a":1}', '{"a":1}'),
         ('Sure! {"a":1} hope that helps', '{"a":1}'),
-        ("```json\n{\"a\":1}\n```", '{"a":1}'),
+        ('```json\n{"a":1}\n```', '{"a":1}'),
         ("no json here", "no json here"),
     ],
 )

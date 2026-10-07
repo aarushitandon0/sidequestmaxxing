@@ -34,6 +34,20 @@ API_BASE_URL=https://<your-sqm-api>.onrender.com bash scripts/smoke_test.sh
 ```
 Expected: `{"status":"ok", ...}` and "smoke test passed". Then open the `sqm-web` URL: the Home page shows "Dungeon status" pills.
 
+## 3b. Generate a quest by hand (after P7)
+```bash
+DEV=$(python3 -c 'import uuid; print(uuid.uuid4())')
+curl -sS -X POST "$API_BASE_URL/v1/quests/generate" \
+  -H 'Content-Type: application/json' -H "X-Device-Id: $DEV" \
+  -d '{"lat":18.520,"lng":73.856,"minutes_available":45,"radius_m":2500,"mood":"curious",
+       "interests":["birds","history"],"persona":"chill","mode":"walk",
+       "local_time_iso":"2026-10-07T17:30:00+05:30"}'
+# then, with the returned id:
+curl -sS -X POST "$API_BASE_URL/v1/quests/<id>/accept" -H "X-Device-Id: $DEV"
+curl -sS -X POST "$API_BASE_URL/v1/quests/<id>/skip"   -H "X-Device-Id: $DEV"
+```
+To prove the fallback: suspend `sqm-llm` in the dashboard and run generate again — it still returns a valid quest (the stored doc has `source: "fallback"`).
+
 ## 4. Atlas setup (after P3)
 ```bash
 # from the repo root, using the API virtualenv; MONGODB_URI in ./.env

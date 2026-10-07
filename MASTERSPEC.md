@@ -187,7 +187,7 @@ Indexes:
 ```
 
 ### 5.2 `quests`
-`{_id, device_id, created_at, request_digest, quest{…schema 6.2…}, source: "llm"|"fallback", model: "name@sha", status: "offered|accepted|completed|expired", accepted_at, expires_at}`
+`{_id, device_id, created_at, request_digest (hash of non-location request fields), quest{…schema 6.2…}, source: "llm"|"fallback", model: "name@sha", status: "offered|accepted|completed|skipped|expired", accepted_at, skipped_at?, expires_at}`. Offered quests expire 6 h after creation.
 Index: `(device_id, created_at desc)`.
 
 ### 5.3 `completions`
@@ -198,7 +198,7 @@ Index: `(device_id, completed_at desc)`; unique `(quest_id)`.
 `{_id: device_id, created_at, persona, interests[], default_radius_m, skills{category: xp}, total_xp, streak_days, last_completed_date, settings{safe_mode: true, voice: true}}`
 
 ### 5.5 `memories`
-`{_id, device_id, ts, text, category, place_id, embedding[384]}`
+`{_id: quest_id, device_id, ts, text, category, place_id, embedding[384], kind: "completed"|"skipped"}`
 **Atlas Vector Search index `memories_vec`**: vector(384, cosine) + filters `device_id`, `ts` (so the memory check can pre-filter to the last 14 days).
 TTL: delete after 90 days (index on `ts`, `expireAfterSeconds`).
 
