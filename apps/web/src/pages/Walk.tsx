@@ -7,7 +7,7 @@ import { Waveform } from '../components/Waveform'
 import { api } from '../lib/api'
 import { formatClock } from '../lib/labels'
 import { elapsedSeconds } from '../lib/questMachine'
-import { speak } from '../lib/speech'
+import { speakQuest, stopVoice, useVoiceState } from '../lib/voice'
 import { usePrefs, useNow } from '../state/hooks'
 import { useQuest } from '../state/QuestProvider'
 
@@ -21,7 +21,7 @@ export function Walk() {
   const navigate = useNavigate()
   const now = useNow(1000)
   const [confirmStop, setConfirmStop] = useState(false)
-  const [speaking, setSpeaking] = useState(false)
+  const voice = useVoiceState()
 
   if (run.phase === 'verifying') return <Navigate to="/verify" replace />
   if (run.phase === 'completed') return <Navigate to="/reward" replace />
@@ -29,11 +29,12 @@ export function Walk() {
   const quest = run.quest
   const elapsed = elapsedSeconds(run, now)
 
-  const repeat = () => {
-    if (speak(quest.briefing, () => setSpeaking(false))) setSpeaking(true)
-  }
+  const repeat = () => void speakQuest({ questId: quest.id, kind: 'briefing', text: quest.briefing })
+  const hint = () =>
+    void speakQuest({ questId: quest.id, kind: 'hint', text: `${quest.objective} ${quest.off_screen_tip}` })
 
   const stop = async () => {
+    stopVoice()
     await api.skipQuest(quest.id).catch(() => undefined)
     reset()
     navigate('/home')
@@ -44,7 +45,7 @@ export function Walk() {
       <img src={ART.sceneForest} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25" />
       <div className="absolute inset-0 bg-gradient-to-b from-forest-deep/70 via-forest-deep/40 to-forest-deep/95" aria-hidden="true" />
 
-      <header className="relative flex items-start justify-between gap-3 p-5">
+      <header className="relative mx-auto flex w-full max-w-3xl items-start justify-between gap-3 p-5 lg:pt-10">
         <div>
           <h1 className="text-3xl">Walk Mode</h1>
           <p className="max-w-xs text-parchment-deep">Your quest is live. Keep your phone in your pocket and explore.</p>
@@ -61,20 +62,25 @@ export function Walk() {
 
       <section className="relative flex flex-1 flex-col items-center justify-center px-6 text-center" aria-label="Quest timer">
         <p className="text-parchment-deep">{quest.title}</p>
-        <p className="mt-2 font-[family-name:var(--font-logo)] text-7xl tabular-nums" aria-live="off">
+        <p className="mt-2 font-[family-name:var(--font-logo)] text-7xl tabular-nums lg:text-9xl" aria-live="off">
           <span className="sr-only">Time outside: </span>
           {formatClock(elapsed)}
         </p>
         <p className="mt-3 max-w-sm text-lg text-parchment-deep">{quest.objective}</p>
       </section>
 
-      <section className="relative p-5">
+      <section className="relative mx-auto w-full max-w-2xl p-5 lg:pb-10">
         <div className="flex items-end gap-3">
           <img src={PORTRAIT[prefs.persona]} alt="" className="h-14 w-14 rounded-full border-2 border-parchment-deep object-cover" />
-          <p className="bubble bubble-dark flex-1">{quest.off_screen_tip}</p>
+          <div className="bubble bubble-dark flex-1">
+            <p>{quest.off_screen_tip}</p>
+            <button type="button" onClick={hint} className="mt-1 min-h-11 text-moss underline">
+              Hear a hint
+            </button>
+          </div>
         </div>
         <div className="mt-3 flex flex-col items-center text-moss-light">
-          <Waveform active={speaking} bars={24} />
+          <Waveform active={voice.playing !== null} bars={24} />
           <p className="mt-1 text-parchment-deep">Stay present. You got this.</p>
         </div>
 
@@ -82,6 +88,7 @@ export function Walk() {
           type="button"
           className="btn btn-moss mt-5 w-full py-5 text-2xl"
           onClick={() => {
+            stopVoice()
             startVerify()
             navigate('/verify')
           }}

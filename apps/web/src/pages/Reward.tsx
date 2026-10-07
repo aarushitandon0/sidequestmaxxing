@@ -23,17 +23,20 @@ export function Reward() {
   const nextLevelXp = 120 * (result.level + 1) * (result.level + 1)
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-5xl">
       <div className="parchment-frame">
-        <article aria-labelledby="done-title" className="parchment p-5 text-center">
+        <article aria-labelledby="done-title" className="parchment grid gap-6 p-5 text-center sm:p-8 lg:grid-cols-2 lg:gap-10">
+          <div className="flex flex-col">
           <LeafIcon className="mx-auto text-5xl text-moss" />
-          <h1 id="done-title" className="hand-title text-4xl">
+          <h1 id="done-title" className="hand-title text-4xl lg:text-5xl">
             Quest Complete!
           </h1>
-          <p className="text-ink-soft">{quest.title}</p>
-          <img src={ART.sceneReward} alt="" className="mt-3 h-36 w-full rounded-xl object-cover" />
+          <p className="text-lg text-ink-soft">{quest.title}</p>
+          <img src={ART.sceneReward} alt="" className="mt-3 h-40 w-full flex-1 rounded-xl object-cover lg:min-h-64" />
 
-          <p className="mt-4 flex items-center justify-center gap-2 text-3xl">
+          </div>
+          <div className="flex flex-col justify-center">
+          <p className="flex items-center justify-center gap-2 text-4xl lg:justify-start">
             <SunIcon className="text-gold" /> +<CountUp value={result.xp_awarded} /> XP
             <span className="sr-only">{result.xp_awarded} XP earned</span>
           </p>
@@ -85,6 +88,7 @@ export function Reward() {
             <Link to="/home" className="btn btn-ghost" onClick={() => reset()}>
               Back to the quest board
             </Link>
+          </div>
           </div>
         </article>
       </div>

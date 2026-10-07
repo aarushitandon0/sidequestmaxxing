@@ -4,9 +4,21 @@ import { PORTRAIT } from './art'
 import { CheckIcon } from './Icons'
 
 /** "Choose your Dungeon Master" 2×2 grid (design template). Radio-group semantics. */
-export function PersonaPicker({ value, onChange }: { value: Persona; onChange: (p: Persona) => void }) {
+export function PersonaPicker({
+  value,
+  onChange,
+  wide = false,
+  compact = false,
+}: {
+  value: Persona
+  onChange: (p: Persona) => void
+  /** Four across on large screens (onboarding). */
+  wide?: boolean
+  /** Smaller portraits (settings). */
+  compact?: boolean
+}) {
   return (
-    <div role="radiogroup" aria-label="Dungeon Master" className="grid grid-cols-2 gap-3">
+    <div role="radiogroup" aria-label="Dungeon Master" className={`grid grid-cols-2 gap-3 ${wide ? 'lg:grid-cols-4 lg:gap-4' : ''}`}>
       {PERSONAS.map((p) => {
         const selected = p === value
         return (
@@ -25,7 +37,7 @@ export function PersonaPicker({ value, onChange }: { value: Persona; onChange: (
                 <CheckIcon />
               </span>
             ) : null}
-            <img src={PORTRAIT[p]} alt="" width={96} height={96} className="h-20 w-20 rounded-full object-cover sm:h-24 sm:w-24" />
+            <img src={PORTRAIT[p]} alt="" width={96} height={96} className={`rounded-full object-cover ${compact ? 'h-16 w-16 sm:h-20 sm:w-20' : 'h-20 w-20 sm:h-24 sm:w-24'} ${wide ? 'lg:h-32 lg:w-32' : ''}`} />
             <span className="mt-2 text-xl">{PERSONA_INFO[p].name}</span>
             <span className="text-[0.95rem] leading-snug text-ink-soft">{PERSONA_INFO[p].blurb}</span>
           </button>

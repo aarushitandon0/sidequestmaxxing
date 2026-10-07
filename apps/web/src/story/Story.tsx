@@ -18,9 +18,11 @@ import {
 } from '../components/Icons'
 import { Medallion } from '../components/Medallion'
 import { Waveform } from '../components/Waveform'
+import { World } from '../components/World'
 import { SKILL_LABEL } from '../lib/labels'
 import { loadPrefs } from '../lib/prefs'
-import { canSpeak, speak, stopSpeaking } from '../lib/speech'
+import { canSpeak } from '../lib/speech'
+import { speakText, stopVoice } from '../lib/voice'
 import { CATEGORIES } from '../lib/types'
 import storyData from './data.json'
 import type { StoryData } from './types'
@@ -97,7 +99,7 @@ function Scene({
   return (
     <section ref={ref} id={id} aria-labelledby={`${id}-title`} data-scene={id} className={`scene ${short ? 'scene-short' : ''} ${className}`}>
       <div className="scene-stage">
-        <div className="mx-auto w-full max-w-5xl">{children}</div>
+        <div className="mx-auto w-full max-w-6xl">{children}</div>
       </div>
       <span className="sr-only">{label}</span>
     </section>
@@ -108,13 +110,19 @@ const at = (n: number) => ({ '--at': n }) as CSSProperties
 
 function StoryNav() {
   return (
-    <nav aria-label="Story" className="absolute inset-x-0 top-0 z-20 flex items-center justify-end gap-1 px-4 py-3 text-ink sm:gap-4">
-      <Link to="/home" className="min-h-11 px-2 py-2">Quests</Link>
-      <Link to="/profile" className="min-h-11 px-2 py-2">Skills</Link>
-      <Link to="/chronicle" className="min-h-11 px-2 py-2">Chronicle</Link>
-      <Link to="/settings" className="inline-flex min-h-11 min-w-11 items-center justify-center text-2xl" aria-label="Settings">
-        <GearIcon />
-      </Link>
+    <nav aria-label="Story" className="absolute inset-x-0 top-0 z-20 px-3 pt-3 md:px-6">
+      <div className="hud-bar mx-auto flex max-w-[1400px] items-center gap-1 px-3 py-2 text-parchment-light sm:gap-3 md:px-4">
+        <span className="logo-text hidden text-xl sm:inline md:text-2xl" aria-hidden="true">
+          Sidequestmaxxing
+        </span>
+        <span className="flex-1" />
+        <Link to="/home" className="min-h-11 rounded-xl px-3 py-2 no-underline hover:bg-forest-soft">Quests</Link>
+        <Link to="/profile" className="min-h-11 rounded-xl px-3 py-2 no-underline hover:bg-forest-soft">Skills</Link>
+        <Link to="/chronicle" className="min-h-11 rounded-xl px-3 py-2 no-underline hover:bg-forest-soft">Chronicle</Link>
+        <Link to="/settings" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-2xl hover:bg-forest-soft" aria-label="Settings">
+          <GearIcon />
+        </Link>
+      </div>
     </nav>
   )
 }
@@ -131,31 +139,39 @@ function StartLink({ className = '' }: { className?: string }) {
 /* ---------------------------------------------------------------- 1. Hero */
 function Hero() {
   return (
-    <section id="hero" aria-labelledby="hero-title" data-scene="hero" className="scene scene-short relative hero-sky">
+    <section id="hero" aria-labelledby="hero-title" data-scene="hero" className="scene scene-short relative overflow-hidden">
+      <World className="absolute inset-0 h-full w-full" />
       <StoryNav />
-      <div className="mx-auto max-w-5xl px-4 pt-20 text-center">
-        <h1 id="hero-title" className="logo-text text-5xl sm:text-7xl">
-          Sidequestmaxxing
-        </h1>
-        <p className="hand-title mt-4 text-2xl sm:text-3xl">
-          Real places. Meaningful quests.
-          <br />A more interesting you.
-        </p>
-        <StartLink className="mt-6" />
+      <div className="relative mx-auto grid min-h-dvh max-w-[1400px] grid-cols-1 items-center gap-8 px-4 pt-28 pb-16 lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:px-8">
+        <div className="text-center lg:text-left">
+          <h1 id="hero-title" className="logo-text text-4xl sm:text-7xl xl:text-8xl">
+            Sidequestmaxxing
+          </h1>
+          <p className="hand-title mt-4 text-2xl sm:text-3xl xl:text-4xl">
+            Real places. Meaningful quests.
+            <br />A more interesting you.
+          </p>
+          <p className="mx-auto mt-4 max-w-xl rounded-2xl bg-parchment-light/85 px-4 py-3 text-lg text-ink-soft lg:mx-0">
+            Your neighbourhood is full of side quests… you just need a reason to explore. Side quest maxxing means chasing
+            fun, unexpected, secondary goals outside your routine — to build skills, break monotony, and spark joy.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+            <StartLink className="py-4 text-2xl" />
+            <a href="#problem" className="btn btn-ghost">
+              See how it works
+            </a>
+          </div>
+        </div>
+        <div className="parchment-frame hero-art mx-auto w-full max-w-2xl rotate-[-1deg]">
+          <img
+            src={ART.heroScene}
+            width={704}
+            height={226}
+            className="aspect-[704/226] w-full rounded-2xl object-cover"
+            alt="An explorer with a backpack and a dog sit on a rock above a sunny old town with a river, castle and mountains. Signposts read Explore, Learn, Grow."
+          />
+        </div>
       </div>
-      <div className="relative mx-auto mt-6 max-w-5xl overflow-hidden px-0 sm:px-4">
-        <img
-          src={ART.heroScene}
-          width={704}
-          height={226}
-          className="hero-art w-full rounded-b-3xl object-cover"
-          alt="An explorer with a backpack and a dog sit on a rock above a sunny old town with a river, castle and mountains. Signposts read Explore, Learn, Grow."
-        />
-      </div>
-      <p className="mx-auto max-w-2xl px-4 py-6 text-center text-xl text-ink-soft">
-        Your neighbourhood is full of side quests… you just need a reason to explore. Side quest maxxing means chasing fun,
-        unexpected, secondary goals outside your routine — to build skills, break monotony, and spark joy.
-      </p>
     </section>
   )
 }
@@ -204,12 +220,18 @@ const DEMO_BRIEFING =
 
 function DungeonMaster() {
   const [playing, setPlaying] = useState(false)
-  useEffect(() => () => stopSpeaking(), [])
+  useEffect(() => () => stopVoice(), [])
+  // Uses the pre-generated demo clip when present (scripts/pregen_demo_audio.py), else browser voice.
   const listen = () => {
     if (playing) {
-      stopSpeaking()
+      stopVoice()
       setPlaying(false)
-    } else if (speak(DEMO_BRIEFING, () => setPlaying(false))) setPlaying(true)
+      return
+    }
+    setPlaying(true)
+    void speakText(DEMO_BRIEFING, () => setPlaying(false)).then((src) => {
+      if (src === 'none') setPlaying(false)
+    })
   }
   return (
     <Scene id="dm" label="Scene 3 of 9">

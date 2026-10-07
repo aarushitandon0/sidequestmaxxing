@@ -29,7 +29,10 @@ class Settings(BaseSettings):
     # Voice
     elevenlabs_api_key: str | None = None
     elevenlabs_voice_id: str | None = None
-    tts_daily_char_budget: int = 20000
+    elevenlabs_model_id: str = "eleven_flash_v2_5"  # low-latency model, 0.5 credits/char
+    elevenlabs_output_format: str = "mp3_44100_64"  # ≤128 kbps works on the free tier
+    tts_daily_char_budget: int = Field(default=20000, ge=0)
+    tts_timeout_s: float = Field(default=10.0, gt=0, le=60)
 
     # Observability
     sentry_dsn: str | None = None

@@ -1,0 +1,14 @@
+{
+  "_comment": "Data pipeline config (MASTERSPEC §10.3). Counts are contexts, before teacher generation/filtering.",
+  "seed": 20261007,
+  "counts": {"train": 3000, "val": 100, "test": 120},
+  "split_fractions": {"train": 0.86, "val": 0.06, "test": 0.08},
+  "split_geohash_precision": 5,
+  "empty_candidates_rate": 0.08,
+  "indoor_only_rate": 0.10,
+  "max_candidates": 8,
+  "minutes_options": [20, 30, 45, 60, 90, 120],
+  "radius_options": [1000, 2500, 5000],
+  "dedupe_cosine": 0.92,
+  "recap": {"train": 380, "val": 20}
+}

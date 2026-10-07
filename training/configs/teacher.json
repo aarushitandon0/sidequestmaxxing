@@ -1,0 +1,13 @@
+{
+  "_comment": "Teacher sampling via Tinker (P14). Model must be in Tinker's current lineup and its licence must allow training other models. Prices: USD per million tokens from https://tinker-docs.thinkingmachines.ai/tinker/models/ — [VERIFY] before approving a run (search summary 2026-10-07).",
+  "model_name": "Qwen/Qwen3.5-397B-A17B",
+  "renderer": "auto_disable_thinking",
+  "license": "apache-2.0 [VERIFY on the Hugging Face model card]",
+  "temperature": 0.9,
+  "top_p": 0.95,
+  "max_tokens": 420,
+  "samples_per_context": 2,
+  "concurrency": 16,
+  "est_completion_tokens": 230,
+  "price_per_mtok": {"prefill": null, "sample": null, "_note": "fill from the Models & Pricing page before approving; the script refuses a paid run while these are null"}
+}

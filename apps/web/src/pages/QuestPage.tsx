@@ -1,13 +1,14 @@
 import { lazy, Suspense, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
+import { CATEGORY_ART } from '../components/art'
 import { QuestCard } from '../components/QuestCard'
 import { Thinking } from '../components/Thinking'
 import { api, ApiError, friendlyError } from '../lib/api'
 import { lastRequest, rememberRequest } from '../lib/questRequest'
 import { consumeReroll, rerollsLeft } from '../lib/reroll'
-import { speak } from '../lib/speech'
 import { localTimeIso } from '../lib/time'
+import { speakQuest } from '../lib/voice'
 import { usePrefs } from '../state/hooks'
 import { useQuest } from '../state/QuestProvider'
 
@@ -32,7 +33,7 @@ export function QuestPage() {
     try {
       const state = await api.acceptQuest(quest.id)
       accept(state.accepted_at ?? new Date().toISOString())
-      if (prefs.voice) speak(quest.briefing) // the briefing is spoken; the phone can go away
+      if (prefs.voice) void speakQuest({ questId: quest.id, kind: 'briefing', text: quest.briefing }) // spoken; the phone can go away
       navigate('/walk')
     } catch (err) {
       if (err instanceof ApiError && err.code === 'quest_expired') {
@@ -71,7 +72,7 @@ export function QuestPage() {
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-6">
       <div className="flex flex-col gap-4">
         {busy === 'reroll' ? <Thinking persona={prefs.persona} label="Rerolling the dice…" /> : null}
         <QuestCard
@@ -92,9 +93,15 @@ export function QuestPage() {
       </div>
       {quest.place ? (
         <Suspense fallback={<div className="parchment h-72 lg:h-full" aria-hidden="true" />}>
-          <QuestMap place={quest.place} className="h-72 lg:h-[520px]" />
+          <QuestMap place={quest.place} className="h-72 border-4 border-wood shadow-xl lg:sticky lg:top-28 lg:h-[calc(100dvh-10rem)]" />
         </Suspense>
-      ) : null}
+      ) : (
+        <aside className="parchment hidden flex-col items-center justify-center gap-3 p-6 text-center lg:flex" aria-label="Where">
+          <img src={CATEGORY_ART[quest.category]} alt="" className="h-64 w-full rounded-xl object-cover" />
+          <p className="hand-title text-2xl">Right around you</p>
+          <p className="text-ink-soft">No destination needed — this one happens wherever you are.</p>
+        </aside>
+      )}
     </div>
   )
 }

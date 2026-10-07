@@ -47,7 +47,7 @@ export default function QuestMap({ place, you, className = '' }: { place: PlaceR
       ref={el}
       role="region"
       aria-label={`Map showing ${place.name}`}
-      className={`sqm-map overflow-hidden rounded-2xl border-2 border-edge ${className}`}
+      className={`sqm-map overflow-hidden rounded-2xl ${className.includes('border-') ? '' : 'border-2 border-edge'} ${className}`}
     />
   )
 }

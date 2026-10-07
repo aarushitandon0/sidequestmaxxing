@@ -12,6 +12,7 @@ import { useQuest } from '../state/QuestProvider'
 import { useVerifier } from '../verifier/context'
 import { accepted, type VerifyOutcome } from '../verifier/parse'
 import { VerifierInstall } from './VerifierInstall'
+import { World } from '../components/World'
 
 type Step =
   | { kind: 'choose' }
@@ -110,8 +111,9 @@ export function Verify() {
 
   if (run.pending) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-5">
-        <div className="parchment p-6 text-center" role="status">
+      <main className="relative flex min-h-dvh flex-col justify-center p-5">
+        <World tone="dusk" className="fixed inset-0 z-0 h-full w-full" />
+        <div className="parchment relative z-10 mx-auto max-w-md p-6 text-center" role="status">
           <h1 className="hand-title text-3xl">Verified — saved on your phone</h1>
           <p className="mt-2">
             {online ? 'Claiming your reward…' : "You're offline. We'll claim your reward as soon as you're back online."}
@@ -122,8 +124,9 @@ export function Verify() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-xl p-4">
-      <div className="dark-panel overflow-hidden">
+    <main className="relative min-h-dvh p-4 lg:flex lg:flex-col lg:justify-center lg:py-10">
+      <World tone="dusk" className="fixed inset-0 z-0 h-full w-full" />
+      <div className="dark-panel relative z-10 mx-auto w-full max-w-2xl overflow-hidden">
         <header className="flex items-start gap-3 p-4">
           <button type="button" onClick={() => { back(); navigate('/walk') }} aria-label="Back to Walk Mode"
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-2xl">
@@ -225,8 +228,8 @@ export function Verify() {
           </p>
         </div>
       </div>
-      <p className="mt-3 text-center">
-        <Link to="/walk" onClick={() => back()} className="text-ink-soft underline">
+      <p className="relative z-10 mt-3 text-center">
+        <Link to="/walk" onClick={() => back()} className="inline-block rounded-full bg-parchment-light/90 px-4 py-2 text-ink-soft underline">
           Not done yet? Back to Walk Mode
         </Link>
       </p>

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { speak, stopSpeaking, canSpeak } from '../lib/speech'
+import { canSpeak } from '../lib/speech'
+import { canUseVoice, speakQuest, speakText, stopVoice, useVoiceState, type VoiceKind } from '../lib/voice'
 import type { Persona } from '../lib/types'
 import { PERSONA_INFO } from '../lib/labels'
 import { PORTRAIT } from './art'
@@ -15,25 +16,51 @@ interface Props {
   listenable?: boolean
   dark?: boolean
   size?: 'md' | 'lg'
+  /** When set, Listen plays this quest's ElevenLabs audio (browser voice as fallback). */
+  questId?: string
+  kind?: VoiceKind
+  /** Hide the small portrait when a big one is shown next to the bubble. */
+  hidePortrait?: boolean
 }
 
 /** The Dungeon Master speaking: portrait + parchment speech bubble + Listen + waveform. */
-export function DmBubble({ persona, text, speech, listenable = true, dark = false, size = 'md' }: Props) {
-  const [playing, setPlaying] = useState(false)
-  useEffect(() => () => stopSpeaking(), [])
-  const portrait = size === 'lg' ? 'h-24 w-24' : 'h-16 w-16'
+export function DmBubble({ persona, text, speech, listenable = true, dark = false, size = 'md', hidePortrait = false, questId, kind = 'briefing' }: Props) {
+  const voice = useVoiceState()
+  const [mine, setMine] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const mineRef = useRef(false)
+  // Stop only what this bubble started (Accept starts the briefing and then leaves this page).
+  useEffect(() => () => {
+    if (mineRef.current) stopVoice()
+  }, [])
+  const playing = mine && (loading || voice.playing !== null)
+  const finish = () => {
+    mineRef.current = false
+    setMine(false)
+  }
+  const portrait = size === 'lg' ? 'h-20 w-20 sm:h-24 sm:w-24' : 'h-16 w-16'
 
   const toggle = () => {
     if (playing) {
-      stopSpeaking()
-      setPlaying(false)
+      stopVoice()
+      setLoading(false)
+      finish()
       return
     }
-    if (speak(speech ?? text, () => setPlaying(false))) setPlaying(true)
+    mineRef.current = true
+    setMine(true)
+    setLoading(true)
+    const words = speech ?? text
+    const started = questId ? speakQuest({ questId, kind, text: words, onEnd: finish }) : speakText(words, finish)
+    void started.then((source) => {
+      setLoading(false)
+      if (source === 'none') finish()
+    })
   }
 
   return (
     <div className="flex items-end gap-3">
+      {hidePortrait ? null : (
       <img
         src={PORTRAIT[persona]}
         alt={`${PERSONA_INFO[persona].name} Dungeon Master`}
@@ -41,9 +68,10 @@ export function DmBubble({ persona, text, speech, listenable = true, dark = fals
         width={96}
         height={96}
       />
-      <div className={`bubble ${dark ? 'bubble-dark' : ''} flex-1`}>
+      )}
+      <div className={`bubble ${dark ? 'bubble-dark' : ''} min-w-0 flex-1`}>
         <p className="text-[1.05rem] leading-snug">{text}</p>
-        {listenable && canSpeak() ? (
+        {listenable && (questId ? canUseVoice() : canSpeak()) ? (
           <div className="mt-1 flex items-center gap-3 text-moss">
             <button
               type="button"
@@ -54,7 +82,8 @@ export function DmBubble({ persona, text, speech, listenable = true, dark = fals
             >
               {playing ? <StopIcon /> : <PlayIcon />}
             </button>
-            <Waveform active={playing} />
+            <Waveform active={playing && !loading} className="min-w-0 overflow-hidden" />
+            {loading ? <span className="sr-only" role="status">Getting the voice ready…</span> : null}
           </div>
         ) : null}
       </div>

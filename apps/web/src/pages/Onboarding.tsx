@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+
+import { ART } from '../components/art'
 
 import { ArrowRightIcon, HeadphonesIcon, PeopleIcon } from '../components/Icons'
 import { PersonaPicker } from '../components/PersonaPicker'
+import { World } from '../components/World'
 import { INTEREST_OPTIONS, RADIUS_OPTIONS } from '../lib/prefs'
 import { usePrefs } from '../state/hooks'
 
@@ -19,19 +22,41 @@ export function Onboarding() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col px-4 py-6">
-      <p className="text-center text-ink-soft" aria-live="polite">
-        Step {step} of 3
-      </p>
+    <div className="relative min-h-dvh">
+    <World className="fixed inset-0 z-0 h-full w-full" />
+    <main className="relative z-10 mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-6 lg:justify-center lg:py-10">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <Link to="/" className="logo-text text-4xl no-underline sm:text-5xl" aria-label="Sidequestmaxxing story">
+          Sidequestmaxxing
+        </Link>
+        <ol className="flex items-center gap-2" aria-hidden="true">
+          {[1, 2, 3].map((n) => (
+            <li key={n} className="flex items-center gap-2">
+              <span
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border-2 text-lg ${
+                  n <= step ? 'border-moss-dark bg-moss text-parchment-light' : 'border-edge bg-parchment-light text-ink-soft'
+                }`}
+              >
+                {n}
+              </span>
+              {n < 3 ? <span className={`h-1 w-10 rounded ${n < step ? 'bg-moss' : 'bg-edge/60'}`} /> : null}
+            </li>
+          ))}
+        </ol>
+        <p className="sign-title text-base" aria-live="polite">
+          Step {step} of 3
+        </p>
+      </div>
 
       {step === 1 && (
-        <section aria-labelledby="dm-title" className="parchment-frame mt-3">
-          <div className="parchment p-4 sm:p-6">
-            <h1 id="dm-title" className="hand-title text-3xl">
+        <section aria-labelledby="dm-title" className="parchment-frame mt-5">
+          <div className="parchment p-4 sm:p-8">
+            <h1 id="dm-title" className="hand-title text-3xl lg:text-4xl">
               Choose your Dungeon Master
             </h1>
             <p className="mb-4 text-ink-soft">Each one sees the world differently. Pick the vibe that feels right today.</p>
             <PersonaPicker
+              wide
               value={prefs.persona}
               onChange={(p) => {
                 update({ persona: p })
@@ -43,7 +68,7 @@ export function Onboarding() {
       )}
 
       {step === 2 && (
-        <section aria-labelledby="interest-title" className="parchment mt-3 p-4 sm:p-6">
+        <section aria-labelledby="interest-title" className="parchment mx-auto mt-5 w-full max-w-3xl p-4 sm:p-8">
           <h1 id="interest-title" className="hand-title text-3xl">
             What makes you curious?
           </h1>
@@ -96,7 +121,9 @@ export function Onboarding() {
       )}
 
       {step === 3 && (
-        <section aria-labelledby="safety-title" className="parchment mt-3 p-4 sm:p-6">
+        <section aria-labelledby="safety-title" className="parchment mx-auto mt-5 grid w-full max-w-4xl gap-6 p-4 sm:p-8 md:grid-cols-[1fr_1.4fr]">
+          <img src={ART.sceneVerify} alt="" className="hidden h-full min-h-56 w-full rounded-xl object-cover md:block" />
+          <div>
           <h1 id="safety-title" className="hand-title text-3xl">
             One promise before you go
           </h1>
@@ -127,8 +154,10 @@ export function Onboarding() {
           <p className="mt-3 text-center text-sm text-ink-soft">
             Want on-device photo checks? You can install the verifier later in Settings.
           </p>
+          </div>
         </section>
       )}
     </main>
+    </div>
   )
 }

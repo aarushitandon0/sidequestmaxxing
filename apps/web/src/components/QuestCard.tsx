@@ -53,7 +53,7 @@ export function QuestCard({ quest, persona, voice, busy = false, rerollsLeft, on
       </div>
 
       <div className="px-4 sm:px-5">
-        <DmBubble persona={persona} text={quest.briefing} listenable={voice} />
+        <DmBubble persona={persona} text={quest.briefing} listenable={voice} questId={quest.id} kind="briefing" />
       </div>
 
       <div className="mx-4 mt-4 rounded-xl border-2 border-gold/60 bg-parchment-light p-3 sm:mx-5" role="note">

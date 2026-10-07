@@ -3,3 +3,6 @@
 # update this file in the same commit (`cd prompts && sha256sum <file>`) and retrain/re-eval.
 9b6929e22fbfe0f12d3c03a6b654278f1491db26bd312026696f5b9222e5d442  quest_master.system.txt
 38687f0189753477d2556590eb5b185def3294d1954552e4f810313e28007bd0  verifier.gemma.txt
+026b514f42a38a6a1b4892a5efa0ead4213f542b759ba8f58db081273bfe59a8  teacher.quest_master.txt
+7d2941b7314c4a55417bc87a19341942ac20879592803665824444104eb6d756  quest_master.fewshot.txt
+5b6b2ac50b41d63e3ca1425d120070b081153c697948c1103235ec7212e72dc8  chronicler.system.txt

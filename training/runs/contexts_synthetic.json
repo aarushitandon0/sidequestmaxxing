@@ -1,0 +1,33 @@
+{
+  "areas": 77,
+  "git_rev": "e3772e9",
+  "places": 640,
+  "scale": 0.1,
+  "seed": 20261007,
+  "splits": {
+    "test": {
+      "areas": 5,
+      "empty_candidates": 0.083,
+      "indoor_only": 0.25,
+      "n": 12,
+      "places": 36
+    },
+    "train": {
+      "areas": 61,
+      "empty_candidates": 0.12,
+      "indoor_only": 0.097,
+      "n": 300,
+      "places": 554
+    },
+    "val": {
+      "areas": 5,
+      "empty_candidates": 0.0,
+      "indoor_only": 0.0,
+      "n": 10,
+      "places": 50
+    }
+  },
+  "stage": "make_contexts",
+  "synthetic": true,
+  "written_at": "2026-10-07T14:29:56.436953+00:00"
+}

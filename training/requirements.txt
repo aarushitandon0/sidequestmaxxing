@@ -1,0 +1,5 @@
+# Training pipeline (MASTERSPEC §4: Tinker SDK + Tinker Cookbook). Install into the API venv:
+#   pip install -r apps/api/requirements-dev.txt -r training/requirements.txt
+# Versions current on PyPI 2026-10-07. tinker-cookbook pulls torch>=2.10 and transformers.
+tinker==0.32.0
+tinker-cookbook==0.5.7
