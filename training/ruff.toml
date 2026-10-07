@@ -5,7 +5,7 @@ extend = "../apps/api/pyproject.toml"
 [lint.isort]
 known-first-party = ["common", "records", "prompts_extra", "embed", "make_contexts", "gen_teacher",
                      "filter", "make_recap_examples", "tinker_backend", "dump_places", "train_sft",
-                     "eval_harness", "llm_eval"]
+                     "eval_harness", "llm_eval", "eval"]
 known-local-folder = ["app"]
 
 [lint.per-file-ignores]
