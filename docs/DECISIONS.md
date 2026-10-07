@@ -81,6 +81,10 @@ Sources that could not be reached from the build session are marked **(unverifie
 | D-7 | 2026-10-07 | Dev-only deps added: `pytest-cov` (P4 asks for a coverage report), `ruff`, `mypy`. Runtime deps are exactly the §4 stack. | P4 acceptance needs coverage. |
 | D-8 | 2026-10-07 | Web tests use **Vitest** + Testing Library; lint via ESLint flat config. | Standard Vite toolchain; `npm run test` required by CLAUDE.md. |
 | D-9 | 2026-10-07 | `services/llm/Dockerfile` no longer apt-installs curl: the upstream `server` stage already installs `curl` (base stage) and ships a `HEALTHCHECK` using it. | Verified in `.devops/cpu.Dockerfile`. |
+| D-10 | 2026-10-07 | Interests sanitizer: NFKC → strip control/format chars → lower → keep letters/digits/space/`-` → ≤ 24 chars; **drop** any item containing instruction-like words (`ignore`, `system`, `prompt`, `json`, `you are`, …) instead of passing it on. Over 6 items is a 422, not a silent truncate. | §6.3 "free text never goes straight into a prompt"; a dropped hobby costs little. |
+| D-11 | 2026-10-07 | `X-Device-Id` must be a UUID **v4** (v1 rejected — it embeds MAC/time). | §9.3 privacy. |
+| D-12 | 2026-10-07 | slowapi uses in-memory storage keyed by device id (fallback: client IP). Valid only while `sqm-api` runs one instance. | Simplest thing for a single starter instance. |
+| D-13 | 2026-10-07 | Validation errors list field names only, never submitted values; logs carry route template, never query strings. | §9.3 no coordinates/free text in logs. |
 
 ---
 
