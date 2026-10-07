@@ -1,0 +1,17 @@
+{
+  "_comment": "SYNTHETIC test fixture shaped like an Overpass 'out center tags' response. Not real OSM data.",
+  "elements": [
+    {"type": "node", "id": 1, "lat": 18.5301, "lon": 73.8202, "tags": {"tourism": "viewpoint", "name": "Hilltop Viewpoint"}},
+    {"type": "way", "id": 2, "center": {"lat": 18.5205, "lon": 73.8568}, "tags": {"leisure": "park", "name": "Banyan Park", "lit": "yes"}},
+    {"type": "way", "id": 3, "center": {"lat": 18.5190, "lon": 73.8550}, "tags": {"tourism": "museum", "name": "City Museum"}},
+    {"type": "node", "id": 4, "lat": 18.5210, "lon": 73.8570, "tags": {"amenity": "cafe", "name": "Corner Cafe", "cuisine": "coffee_shop"}},
+    {"type": "node", "id": 5, "lat": 18.5215, "lon": 73.8575, "tags": {"amenity": "cafe"}},
+    {"type": "way", "id": 6, "center": {"lat": 18.5220, "lon": 73.8580}, "tags": {"leisure": "garden", "name": "Private Garden", "access": "private"}},
+    {"type": "node", "id": 7, "lat": 18.5230, "lon": 73.8590, "tags": {"historic": "memorial", "name": "Old Memorial", "description": "Stone memorial from 1901"}},
+    {"type": "relation", "id": 8, "tags": {"leisure": "park", "name": "No Centre Park"}},
+    {"type": "node", "id": 9, "lat": 18.5240, "lon": 73.8600, "tags": {"shop": "bakery", "name": "Not A Kind"}},
+    {"type": "node", "id": 1, "lat": 18.5301, "lon": 73.8202, "tags": {"tourism": "viewpoint", "name": "Hilltop Viewpoint"}},
+    {"type": "node", "id": 10, "lat": 18.5250, "lon": 73.8610, "tags": {"amenity": "library", "name": "Public Library", "name:en": "Public Library EN"}},
+    {"type": "node", "id": 11, "lat": 18.5260, "lon": 73.8620, "tags": {"natural": "wood", "name": "Little Wood", "access": "no"}}
+  ]
+}

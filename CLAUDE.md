@@ -24,8 +24,8 @@ render.yaml      Render Blueprint (web + api + llm)
 ## Commands (keep these working; update here if they change)
 ```
 # API
-cd apps/api && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-pytest -q                                   # unit + contract tests
+cd apps/api && python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt
+pytest -q                                   # unit + contract tests (ruff check . ; mypy)
 uvicorn app.main:app --reload --port 8000
 
 # Web
