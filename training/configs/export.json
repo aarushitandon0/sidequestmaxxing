@@ -2,7 +2,7 @@
   "_comment": "Export of the tuned model (P17, docs/MODEL_EXPORT.md). base_model must equal sft.json. license: Apache-2.0 per the Qwen model card — re-check https://huggingface.co/Qwen/Qwen3.5-4B before publishing (D-60). hf_repo is filled in by you (a PUBLIC repo you own).",
   "base_model": "Qwen/Qwen3.5-4B",
   "license": "apache-2.0",
-  "hf_repo": null,
+  "hf_repo": "areyousheeeee/sidequestmaxxing",
   "gguf_file": "sidequestmaxxing-quest-master-Q4_K_M.gguf",
   "quant": "Q4_K_M",
   "repo_url": "https://github.com/aarushitandon0/sidequestmaxxing"
