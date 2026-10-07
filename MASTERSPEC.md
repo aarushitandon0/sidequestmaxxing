@@ -574,7 +574,7 @@ services:
 **Known gotchas (read before deploying):**
 1. If `sqm-web`/`sqm-api` names are taken, Render appends a suffix. After first deploy, **copy the real URLs** into `VITE_API_BASE_URL` and `WEB_ORIGIN` and redeploy both.
 2. `LLM_HOSTPORT` is `host:port`; the API builds `http://$LLM_HOSTPORT`. Do not hard-code a port.
-3. Persistent disks and private services require a paid plan. Check current pricing and any sponsor credit **before** committing **[VERIFY]**. Ask DevRelay for offers (see DEVRELAY.md).
+3. Persistent disks and private services require a paid plan. Check current pricing and any sponsor credit **before** committing **[VERIFY]**. Ask DevRelay for offers (see docs/DEVRELAY.md).
 4. Check instance RAM on the current pricing page. A 4B Q4_K_M model needs roughly 3 GB plus KV cache; do **not** guess — measure at gate G1.
 5. `fastembed` + FastAPI may exceed a 512 MB instance; if OOM, upgrade `sqm-api` one tier.
 6. Free instances spin down and have no disks — do not use them for `sqm-llm`/`sqm-api` during the demo.

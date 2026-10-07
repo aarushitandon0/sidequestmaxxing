@@ -29,11 +29,11 @@ Writing quality is the most heavily weighted criterion, then theme relevance, cr
 
 ## 4. 7-day schedule
 
-> Each day ends with: commit, deploy to Render, update `docs/DECISIONS.md`, save the Claude Code session via DevRelay (see DEVRELAY.md).
+> Each day ends with: commit, deploy to Render, update `docs/DECISIONS.md`, save the Claude Code session via DevRelay (see docs/DEVRELAY.md).
 
 ### Day 0 — Setup (≈ 2–3 h)
 - [ ] Create accounts/keys: Render, MongoDB Atlas (M0 cluster, DB `sqm`), Tinker, ElevenLabs, Sentry (backend+frontend projects), Hugging Face (token; accept Gemma + chosen model terms), GitHub repo (public).
-- [ ] Install DevRelay and Claude Code; verify (DEVRELAY.md).
+- [ ] Install DevRelay and Claude Code; verify (docs/DEVRELAY.md).
 - [ ] Check challenge deadline/rules and DevRelay sponsor offers (Render, ElevenLabs, MongoDB credits).
 - [ ] Put `MASTERSPEC.md`, `PROJECTPLAN.md`, `CLAUDE.md` in repo root; `docs/` for the rest.
 - [ ] Choose demo city + bounding box (your own city is ideal; you must be able to test outdoors there).
