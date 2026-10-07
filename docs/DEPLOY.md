@@ -46,6 +46,24 @@ Then check: `curl -H "X-Device-Id: $(python -c 'import uuid;print(uuid.uuid4())'
 Vector indexes build asynchronously in Atlas — wait until they show "READY" before testing.
 (Run locally with `MONGODB_URI` in your `.env`. In Atlas → Network Access, allow your IP and Render's outbound IPs, or 0.0.0.0/0 for the contest with a strong password.)
 
+## 4b. Gate G1 — pick, deploy and benchmark the base model (P6)
+Read the model options + memory math in `docs/DECISIONS.md` ("Gate G1"). You choose; nothing here spends money until you click.
+1. **Pick a base GGUF to test.** On Hugging Face, open the official (or a well-known quantizer's) GGUF repo for your choice, pick the `Q4_K_M` file, note its exact size and copy its `resolve/main/...gguf` URL. Optional: copy its SHA-256 from the file page.
+2. **Try it locally first (free):**
+   ```bash
+   docker run --rm -p 8080:8080 -v "$PWD/models:/models" ghcr.io/ggml-org/llama.cpp:server \
+     -m /models/<file>.gguf --host 0.0.0.0 --port 8080 -c 2048 -np 1
+   python scripts/bench_llm.py --base-url http://localhost:8080 --n 10 --label "laptop <model>"
+   ```
+   (or with Ollama: `LLM_BASE_URL=http://localhost:11434 LLM_MODEL=<tag> python scripts/bench_llm.py --n 10`)
+3. **Deploy `sqm-llm` on Render.** In the Blueprint, set `sqm-llm` → `MODEL_URL` (and `MODEL_SHA256` if known). Set the plan to what the memory table says fits (**ask/confirm cost first**; edit `plan:` in `render.yaml` in the same commit). Wait for the first boot to finish downloading; logs end with the server listening.
+4. **Benchmark on Render.** `sqm-llm` is private, so run the bench from `sqm-api` (the image ships the script). Dashboard → `sqm-api` → **Shell**:
+   ```bash
+   cd /srv && PYTHONPATH=/srv python scripts/bench_llm.py --n 20 --label "render-<plan> <model>"
+   ```
+   It uses `LLM_HOSTPORT` automatically and writes `/srv/evals/bench_llm_<ts>.json` (ephemeral) — copy the printed JSON summary + the file into the repo's `evals/` and commit it.
+5. **Record** the printed p50/p95 and tokens/s in `docs/DECISIONS.md` ("Gate G1") with the JSON file name. Gate passes if p50 ≤ 15 s (MASTERSPEC §10.2) and memory leaves ≥ 1 GB headroom (Render **Metrics** tab).
+
 ## 5. After judging
 Suspend or delete `sqm-llm` and `sqm-api` (and the disk) to stop charges.
 

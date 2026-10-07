@@ -32,6 +32,18 @@ Sources that could not be reached from the build session are marked **(unverifie
 - Exact base model + license (Qwen3-4B-Instruct-2507 or similar, Apache-2.0?). → Hugging Face model card.
 - Teacher-model terms for synthetic training data.
 
+### Gate G1 — base model choice (P6; **needs the user**)
+Memory = GGUF file + KV cache (f16, `-c 2048`) + ~0.3 GB runtime/compute buffers. Rule (§10.2): total ≤ instance RAM − 1 GB.
+KV per token = 2 × layers × kv_heads × head_dim × 2 bytes. File sizes are approximate Q4_K_M sizes — **check the exact file on Hugging Face before choosing** (blocked from this container).
+
+| Option | Layers / KV heads / head dim | KV @ 2048 | Q4_K_M file | ≈ Total | Fits (−1 GB) | License |
+|---|---|---|---|---|---|---|
+| A. Qwen3-4B-Instruct-2507 | 36 / 8 / 128 | 0.30 GB | ≈ 2.5 GB | ≈ 3.1 GB | Pro Plus (8 GB); Pro (4 GB) is ~0.1 GB over the rule | Apache-2.0 |
+| B. Qwen3-1.7B | 28 / 8 / 128 | 0.23 GB | ≈ 1.1 GB | ≈ 1.6 GB | Pro (4 GB); not Standard (2 GB) | Apache-2.0 |
+| C. Llama-3.2-3B-Instruct | 28 / 8 / 128 | 0.23 GB | ≈ 2.0 GB | ≈ 2.5 GB | Pro (4 GB) | Llama 3.2 Community License (not OSI open) |
+
+Trade-off: A gives the best quests but is the slowest on CPU (more weights to stream per token) and needs Pro Plus to respect the 1 GB headroom (or Pro with `CTX_SIZE=1536`, which halves headroom risk but must be measured). B is fastest and cheapest but needs the fine-tune to carry more of the quality. Qwen3-1.7B is a hybrid thinking model: we already send `enable_thinking: false`. Latency must be **measured** with `scripts/bench_llm.py` — no estimate is recorded here. Tinker availability of each base is still OQ (Tinker docs).
+
 ### Gemma / MediaPipe (Spec §15.2, §15.3)
 - Gemma-3n `.litertlm` web model: gated? download size? how to host (OQ-1). → https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/web_js , https://huggingface.co/google
 - MediaPipe LLM Inference maintenance mode impact; WebGPU on target phones.
@@ -98,6 +110,12 @@ Sources that could not be reached from the build session are marked **(unverifie
 | D-24 | 2026-10-07 | Open-Meteo call: `current=temperature_2m,weather_code`, `hourly=precipitation_probability`, `daily=sunrise,sunset`, `timezone=GMT`, `timeformat=unixtime`, `forecast_days=2`; precip = worst hour overlapping the quest window; cache 5 min per 0.01° cell; 3 s timeout. **[VERIFY `timeformat=unixtime` on the live docs — open-meteo.com was blocked from the build container.]** | §7.1. |
 | D-25 | 2026-10-07 | Daylight: Open-Meteo sunrise/sunset when available, else an offline NOAA solar calculation (`app/services/sun.py`). `indoor_only` = thunderstorm (WMO 95/96/99) or precip ≥ 70% or temp ≥ 38 °C or `daylight_minutes_left < 35`. MASTERSPEC §7.1 updated. | Resilience (§2.4) + resolves A4. |
 | D-26 | 2026-10-07 | Scout query text = sanitized interests + a fixed mood phrase; recent categories are not embedded (would attract, not repel). Diversity = drop places visited in the last 14 days (memory check) + max 3 per kind. Reachability = round-trip walk at 75 m/min + 10 min ≤ minutes_available. Scout never raises on DB errors (returns no candidates → place-less/fallback path). MASTERSPEC §3.1 updated. | Correctness of semantic search. |
+| D-27 | 2026-10-07 | Quest Master sends `response_format = {"type":"json_schema","json_schema":{"name":"quest","schema":S}}` (OpenAI shape). On llama.cpp master, type `json_schema` reads **only** `response_format.json_schema.schema`; the README's `{"type":"json_schema","schema":S}` leaves the schema empty (= any object). The OpenAI shape also works with Ollama. Also sent: `chat_template_kwargs: {"enable_thinking": false}` (turns off Qwen3 hybrid thinking; ignored by other templates). | Read `tools/server/server-common.cpp` on master (2026-10-07). |
+| D-28 | 2026-10-07 | LLM schema = `QuestDraft` JSON schema with **every** property required (nullable ones stay nullable) and `additionalProperties: false`, so the grammar always emits `place_id` and can never emit `xp`/`rarity`/`id`. | Server-authoritative fields; explicit nulls. |
+| D-29 | 2026-10-07 | LLM call timeouts: whole call bounded at `LLM_TIMEOUT_S` (default 25 s) with `asyncio.timeout`; TCP connect bounded at 2 s, so an unreachable host falls back in < 3 s. Transport errors (timeout/connection/HTTP/bad body) go **straight** to the fallback; only validator failures get the one retry. | §7.3, P7 "< 3 s with LLM unreachable". |
+| D-30 | 2026-10-07 | The retry appends the model's rejected output as an `assistant` turn, then a `user` turn listing `- Vn: reason` (validator reasons only, never user text). | Model needs to see what it wrote to fix it. |
+| D-31 | 2026-10-07 | New settings `LLM_MODEL` (sent as `model`; llama.cpp ignores it, Ollama needs a real tag) and `LLM_TIMEOUT_S`. `FALLBACK_ON_LLM_ERROR=false` makes transport errors raise (eval/debug only); double validation failure always falls back. Output parsing strips `<think>` blocks and code fences before V1 (unconstrained local models). | Local dev via Ollama (P6 item 3). |
+| D-32 | 2026-10-07 | Prompts are hashed byte-for-byte (`prompts/HASHES.txt`, sha256sum format); `.gitattributes` marks `prompts/*.txt -text` so git never rewrites line endings. A test also checks the prompt file equals the MASTERSPEC §7.3 block verbatim. | Invariant 4. |
 
 ---
 
@@ -106,11 +124,13 @@ Sources that could not be reached from the build session are marked **(unverifie
 | Date | Fact | Source |
 |---|---|---|
 | 2026-10-07 | llama.cpp server image `ghcr.io/ggml-org/llama.cpp:server`; binary at `/app/llama-server` (WORKDIR `/app`, `ENTRYPOINT ["/app/llama-server"]`); base stage installs `libgomp1 curl`; healthcheck `GET /health`. | https://github.com/ggml-org/llama.cpp/blob/master/.devops/cpu.Dockerfile |
-| 2026-10-07 | llama.cpp flags `-m`, `--host`, `--port`, `-c/--ctx-size`, `-np/--parallel`, `--threads`, `--jinja` (on by default). JSON constraint on `/v1/chat/completions`: `"response_format": {"type": "json_schema", "schema": {...}}` (or `{"type":"json_object"}`). `GET /health` → 200 `{"status":"ok"}`, 503 while loading. | https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md |
+| 2026-10-07 | llama.cpp flags `-m`, `--host`, `--port`, `-c/--ctx-size`, `-np/--parallel`, `--threads`, `--jinja` (on by default). JSON constraint on `/v1/chat/completions`: `"response_format": {"type": "json_schema", "schema": {...}}` (or `{"type":"json_object"}`). **Superseded by D-27: on master the server reads `json_schema.schema` for type `json_schema`; the README form is silently ignored.** `GET /health` → 200 `{"status":"ok"}`, 503 while loading. | https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md |
 | 2026-10-07 | Render Blueprint: static site = `type: web` + `runtime: static` + `staticPublishPath`, with `headers` and `routes`; Docker = `dockerfilePath`, `dockerContext`, `dockerCommand`; private service = `type: pserv`; `fromService` properties `host`, `hostport` (also `envVarKey`); `disk` = `name`, `mountPath`, `sizeGB`; `env` is deprecated (use `runtime`); `render blueprints validate` needs Render CLI ≥ 2.7.0; JSON schema at https://render.com/schema/render.yaml.json. | Render's official skill pack: https://github.com/render-oss/skills/tree/main/skills/render-blueprints (render.com itself blocked from the build container) |
 | 2026-10-07 | Atlas `$vectorSearch` pre-filter supports `$eq, $ne, $gt, $gte, $lt, $lte, $in, $nin, $exists, $and, $or, $not`; fields used in `filter` must be indexed as `type: "filter"`. Vector Search indexes can be created on M0. | Web search summary of https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-stage/ — **re-check on the page** (blocked from container) |
 | 2026-10-07 | Open-Meteo `GET https://api.open-meteo.com/v1/forecast` with `latitude`, `longitude`, `current=…`, `hourly=…`, `daily=sunrise,sunset,…`, `timezone=auto`, `forecast_days`; no API key for non-commercial use. | Web search summary of https://open-meteo.com/en/docs — **re-check** (blocked from container) |
 | 2026-10-07 | Latest PyPI versions at scaffold: fastapi 0.142.2, pydantic 2.13.5, pydantic-settings 2.15.0, httpx 0.28.1, pymongo 4.18.2, slowapi 0.1.10, sentry-sdk 2.71.0, fastembed 0.8.1, pygeohash 3.5.1, uvicorn 0.54.0. | `pip install` in the build container |
+| 2026-10-07 | llama.cpp `/v1/chat/completions` response has `usage.{prompt_tokens,completion_tokens}` and `timings.{predicted_per_second,prompt_per_second,predicted_ms,...}`; `model` is optional outside router mode; `chat_template_kwargs` and `--reasoning-budget 0` control thinking. | https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md + `tools/server/server-common.cpp` |
+| 2026-10-07 | Render instance types (web/private services): Starter 512 MB/0.5 CPU $7, Standard 2 GB/1 CPU $25, Pro 4 GB/2 CPU $85, Pro Plus 8 GB/4 CPU $175, Pro Max 16 GB/4 CPU $225 per month. | Search summary of https://render.com/docs/compute-plans — **re-check on the page** (render.com blocked from container) |
 
 ---
 

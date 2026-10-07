@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     # LLM service (llama.cpp). LLM_BASE_URL overrides LLM_HOSTPORT for local dev.
     llm_hostport: str | None = None
     llm_base_url: str | None = None
+    llm_model: str = "quest"  # sent as `model`; llama.cpp ignores it, Ollama needs a real tag
+    llm_timeout_s: float = Field(default=25.0, gt=0, le=120)
     fallback_on_llm_error: bool = True
 
     # Voice

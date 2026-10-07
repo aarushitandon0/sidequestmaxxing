@@ -17,6 +17,8 @@ RUN python preload_embeddings.py && rm preload_embeddings.py
 
 COPY apps/api/app ./app
 COPY prompts /prompts
+# Gate G1 benchmark, runnable from the Render shell: PYTHONPATH=/srv python scripts/bench_llm.py
+COPY scripts/_bootstrap.py scripts/bench_llm.py ./scripts/
 
 RUN useradd --create-home --uid 10001 app \
     && chown -R app:app /srv /opt/fastembed

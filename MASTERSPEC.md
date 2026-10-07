@@ -312,7 +312,7 @@ Rules:
 8. Always include a short safety_note.
 ```
 **User message**: a JSON object `{"context":{…}, "persona":"…", "mood":"…", "interests":[…], "minutes_available":45, "recent_categories":[…], "candidates":[…]}`.
-**Call**: `POST http://${LLM_HOSTPORT}/v1/chat/completions` with `temperature 0.8`, `top_p 0.95`, `max_tokens 380`, JSON-schema-constrained decoding. **[VERIFY]** exact parameter name for schema/grammar in the llama.cpp server README at build time (`response_format`/`json_schema`).
+**Call**: `POST http://${LLM_HOSTPORT}/v1/chat/completions` with `temperature 0.8`, `top_p 0.95`, `max_tokens 380`, JSON-schema-constrained decoding. Resolved (DECISIONS D-27): `response_format: {"type":"json_schema","json_schema":{"name":"quest","schema":<QuestDraft schema>}}` plus `chat_template_kwargs: {"enable_thinking": false}`.
 Timeout 25 s. One retry with failure reasons appended as an extra user message.
 
 ### 7.4 Validators (pure functions; unit-tested; also used as the training filter and eval metric)
