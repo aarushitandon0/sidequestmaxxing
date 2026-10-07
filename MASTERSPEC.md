@@ -148,7 +148,7 @@ Render (hosting), MongoDB Atlas (data), ElevenLabs (voice), Sentry (tracing), Ti
 | Inference | `llama.cpp` server image, GGUF Q4_K_M | Private service + disk |
 | Training | Tinker Python SDK + Tinker Cookbook (docs: tinker-docs.thinkingmachines.ai) | **Read docs first; do not guess the API.** |
 | DB | MongoDB Atlas (M0 free tier) with Vector Search | **[VERIFY]** vector search availability on tier |
-| Voice | ElevenLabs TTS (`eleven_flash_v2_5` or current low-latency model) | **[VERIFY]** model id + endpoint |
+| Voice | ElevenLabs TTS (`eleven_flash_v2_5` or current low-latency model) | Endpoint verified from the official SDK (D-54); model limits **[VERIFY]** |
 | Observability | Sentry (backend + frontend) with `gen_ai.*` spans | **[VERIFY]** span op names |
 | Data | OSM via Overpass; weather via Open-Meteo | Respect usage policies; cache aggressively |
 
@@ -224,7 +224,7 @@ Base: `/v1`. JSON only (except TTS audio). Header `X-Device-Id: <uuid v4>` requi
 | PUT | `/v1/profile/settings` | persona, interests, radius, voice |
 | DELETE | `/v1/profile` | Delete all data for this device (204) |
 | POST | `/v1/recap/weekly` | Generate/fetch weekly Chronicle |
-| POST | `/v1/tts` | Proxy to ElevenLabs → `audio/mpeg` |
+| POST | `/v1/tts` | `{quest_id, kind: "briefing"\|"hint"}` → proxy to ElevenLabs → `audio/mpeg` (text taken from the stored quest, never from the client) |
 | GET | `/v1/places/near` | (debug/demo) candidate places for a point |
 
 ### 6.2 Quest schema (the LLM outputs only fields marked 🤖; server fills the rest)

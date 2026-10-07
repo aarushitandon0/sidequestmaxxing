@@ -21,7 +21,8 @@ import { Waveform } from '../components/Waveform'
 import { World } from '../components/World'
 import { SKILL_LABEL } from '../lib/labels'
 import { loadPrefs } from '../lib/prefs'
-import { canSpeak, speak, stopSpeaking } from '../lib/speech'
+import { canSpeak } from '../lib/speech'
+import { speakText, stopVoice } from '../lib/voice'
 import { CATEGORIES } from '../lib/types'
 import storyData from './data.json'
 import type { StoryData } from './types'
@@ -219,12 +220,18 @@ const DEMO_BRIEFING =
 
 function DungeonMaster() {
   const [playing, setPlaying] = useState(false)
-  useEffect(() => () => stopSpeaking(), [])
+  useEffect(() => () => stopVoice(), [])
+  // Uses the pre-generated demo clip when present (scripts/pregen_demo_audio.py), else browser voice.
   const listen = () => {
     if (playing) {
-      stopSpeaking()
+      stopVoice()
       setPlaying(false)
-    } else if (speak(DEMO_BRIEFING, () => setPlaying(false))) setPlaying(true)
+      return
+    }
+    setPlaying(true)
+    void speakText(DEMO_BRIEFING, () => setPlaying(false)).then((src) => {
+      if (src === 'none') setPlaying(false)
+    })
   }
   return (
     <Scene id="dm" label="Scene 3 of 9">

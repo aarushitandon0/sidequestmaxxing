@@ -91,6 +91,12 @@ Read the model options + memory math in `docs/DECISIONS.md` ("Gate G1"). You cho
 5. Optional proof for the post: desktop Chrome DevTools → Network (filter `Fetch/XHR`, "Preserve log"), repeat 3–4 online: the only request is `POST /v1/quests/{id}/complete` with a JSON body of `verification`, `elapsed_seconds`, `screen_seconds` — no image. Screenshot it for the claims ledger.
 6. Turn airplane mode off → within seconds the reward screen appears (queued claim replayed).
 
+## 4e. Voice (P13)
+- Set `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` on `sqm-api` (Render dashboard → Environment; never in the repo). Without them `/v1/tts` answers 503 and the app uses the browser voice — nothing breaks.
+- `TTS_DAILY_CHAR_BUDGET` caps characters per UTC day across all players (stored in `usage`, `_id: "tts:YYYY-MM-DD"`); per device 20 requests/hour. At ~0.5 credit/char (Flash), 20 000 chars ≈ 10 000 credits/day — check your plan's monthly credits and lower it if needed.
+- Demo clips (optional, spends credits once): edit `scripts/demo_quests.json` (copy briefings verbatim — clips match by exact text), then `python scripts/pregen_demo_audio.py --dry-run`, then `--yes`. Commit `apps/web/public/demo-audio/*.mp3` + `manifest.json` only if the voice's licence allows redistribution.
+- Manual check: accept a quest with voice on → audio plays; repeat it in Walk Mode with airplane mode on → plays from the device cache; with the key removed → browser voice reads the same text.
+
 ## 5. After judging
 Suspend or delete `sqm-llm` and `sqm-api` (and the disk) to stop charges.
 

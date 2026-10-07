@@ -7,7 +7,7 @@ import { Waveform } from '../components/Waveform'
 import { api } from '../lib/api'
 import { formatClock } from '../lib/labels'
 import { elapsedSeconds } from '../lib/questMachine'
-import { speak } from '../lib/speech'
+import { speakQuest, stopVoice, useVoiceState } from '../lib/voice'
 import { usePrefs, useNow } from '../state/hooks'
 import { useQuest } from '../state/QuestProvider'
 
@@ -21,7 +21,7 @@ export function Walk() {
   const navigate = useNavigate()
   const now = useNow(1000)
   const [confirmStop, setConfirmStop] = useState(false)
-  const [speaking, setSpeaking] = useState(false)
+  const voice = useVoiceState()
 
   if (run.phase === 'verifying') return <Navigate to="/verify" replace />
   if (run.phase === 'completed') return <Navigate to="/reward" replace />
@@ -29,11 +29,12 @@ export function Walk() {
   const quest = run.quest
   const elapsed = elapsedSeconds(run, now)
 
-  const repeat = () => {
-    if (speak(quest.briefing, () => setSpeaking(false))) setSpeaking(true)
-  }
+  const repeat = () => void speakQuest({ questId: quest.id, kind: 'briefing', text: quest.briefing })
+  const hint = () =>
+    void speakQuest({ questId: quest.id, kind: 'hint', text: `${quest.objective} ${quest.off_screen_tip}` })
 
   const stop = async () => {
+    stopVoice()
     await api.skipQuest(quest.id).catch(() => undefined)
     reset()
     navigate('/home')
@@ -71,10 +72,15 @@ export function Walk() {
       <section className="relative mx-auto w-full max-w-2xl p-5 lg:pb-10">
         <div className="flex items-end gap-3">
           <img src={PORTRAIT[prefs.persona]} alt="" className="h-14 w-14 rounded-full border-2 border-parchment-deep object-cover" />
-          <p className="bubble bubble-dark flex-1">{quest.off_screen_tip}</p>
+          <div className="bubble bubble-dark flex-1">
+            <p>{quest.off_screen_tip}</p>
+            <button type="button" onClick={hint} className="mt-1 min-h-11 text-moss underline">
+              Hear a hint
+            </button>
+          </div>
         </div>
         <div className="mt-3 flex flex-col items-center text-moss-light">
-          <Waveform active={speaking} bars={24} />
+          <Waveform active={voice.playing !== null} bars={24} />
           <p className="mt-1 text-parchment-deep">Stay present. You got this.</p>
         </div>
 
@@ -82,6 +88,7 @@ export function Walk() {
           type="button"
           className="btn btn-moss mt-5 w-full py-5 text-2xl"
           onClick={() => {
+            stopVoice()
             startVerify()
             navigate('/verify')
           }}

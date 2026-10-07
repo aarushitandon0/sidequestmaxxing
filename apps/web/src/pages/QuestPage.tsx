@@ -7,8 +7,8 @@ import { Thinking } from '../components/Thinking'
 import { api, ApiError, friendlyError } from '../lib/api'
 import { lastRequest, rememberRequest } from '../lib/questRequest'
 import { consumeReroll, rerollsLeft } from '../lib/reroll'
-import { speak } from '../lib/speech'
 import { localTimeIso } from '../lib/time'
+import { speakQuest } from '../lib/voice'
 import { usePrefs } from '../state/hooks'
 import { useQuest } from '../state/QuestProvider'
 
@@ -33,7 +33,7 @@ export function QuestPage() {
     try {
       const state = await api.acceptQuest(quest.id)
       accept(state.accepted_at ?? new Date().toISOString())
-      if (prefs.voice) speak(quest.briefing) // the briefing is spoken; the phone can go away
+      if (prefs.voice) void speakQuest({ questId: quest.id, kind: 'briefing', text: quest.briefing }) // spoken; the phone can go away
       navigate('/walk')
     } catch (err) {
       if (err instanceof ApiError && err.code === 'quest_expired') {

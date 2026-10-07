@@ -1,0 +1,17 @@
+{
+  "_comment": "Fixed texts to pre-voice for the demo. The app matches clips by the SHA-256 of the exact text, so copy briefings verbatim. Run: python scripts/pregen_demo_audio.py --dry-run",
+  "clips": [
+    {
+      "slug": "story-stone-marker",
+      "text": "A local spot with a hidden story. Find the old stone marker by the river and look for a particular leaf growing in the cracks."
+    },
+    {
+      "slug": "riverbank-riddle",
+      "text": "Find the old stone marker by the river and look for a leaf growing in the cracks."
+    },
+    {
+      "slug": "bird-count",
+      "text": "Wander over to the park, find a quiet bench and count how many different birds you can spot in ten minutes."
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { PersonaPicker } from '../components/PersonaPicker'
 import { api, friendlyError } from '../lib/api'
 import { INTEREST_OPTIONS, RADIUS_OPTIONS } from '../lib/prefs'
 import { clearAppStorage } from '../lib/storage'
+import { clearVoiceCache } from '../lib/voice'
 import { usePrefs } from '../state/hooks'
 import { VerifierInstall } from './VerifierInstall'
 
@@ -13,8 +14,9 @@ export function Settings() {
   const [confirm, setConfirm] = useState(false)
   const del = useMutation({
     mutationFn: api.deleteProfile,
-    onSuccess: () => {
+    onSuccess: async () => {
       clearAppStorage() // device id, prefs, active quest — a fresh start
+      await clearVoiceCache()
       window.location.assign('/')
     },
   })

@@ -11,6 +11,7 @@ from app.errors import ApiError, db_unavailable
 from app.services.db import Doc, get_database
 from app.services.embeddings import Embedder, get_embedder
 from app.services.llm_client import LLMClient
+from app.services.tts import ElevenLabsClient, build_tts_client
 from app.services.weather import WeatherClient, get_weather_client
 
 DEVICE_HEADER = "X-Device-Id"
@@ -68,6 +69,19 @@ async def get_llm_client(request: Request) -> LLMClient | None:
             else None
         )
     client: LLMClient | None = state.llm_client
+    return client
+
+
+async def get_tts_client(request: Request) -> ElevenLabsClient | None:
+    """One ElevenLabs client per app; None when the key/voice aren't configured."""
+    state = request.app.state
+    if not hasattr(state, "tts_client"):
+        s = state.settings
+        state.tts_client = build_tts_client(
+            s.elevenlabs_api_key, s.elevenlabs_voice_id, s.elevenlabs_model_id,
+            s.elevenlabs_output_format, s.tts_timeout_s,
+        )  # fmt: skip
+    client: ElevenLabsClient | None = state.tts_client
     return client
 
 
