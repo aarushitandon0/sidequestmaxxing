@@ -163,10 +163,10 @@ Database: `sqm`. All timestamps UTC ISO-8601 (`datetime` in Mongo).
 {
   "_id": "node/123456",
   "name": "Vetal Tekdi Viewpoint",
-  "kind": "viewpoint|park|garden|nature_reserve|peak|water|heritage|artwork|market|cafe|museum|temple|other",
+  "kind": "viewpoint|park|garden|nature_reserve|peak|water|heritage|artwork|market|cafe|museum|library|temple|other",
   "tags_summary": "tourism=viewpoint; ele=...",
   "loc": {"type": "Point", "coordinates": [lng, lat]},
-  "cell5": "te7ud",
+  "cell5": "tek3r",
   "indoor": false,
   "needs_daylight": true,
   "text": "Vetal Tekdi Viewpoint — viewpoint — hill, scenic",
@@ -199,7 +199,7 @@ Index: `(device_id, completed_at desc)`; unique `(quest_id)`.
 
 ### 5.5 `memories`
 `{_id, device_id, ts, text, category, place_id, embedding[384]}`
-**Atlas Vector Search index `memories_vec`**: vector(384, cosine) + filter `device_id`.
+**Atlas Vector Search index `memories_vec`**: vector(384, cosine) + filters `device_id`, `ts` (so the memory check can pre-filter to the last 14 days).
 TTL: delete after 90 days (index on `ts`, `expireAfterSeconds`).
 
 ### 5.6 `recaps`, `usage`

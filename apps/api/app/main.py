@@ -1,5 +1,9 @@
 """FastAPI entrypoint."""
 
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,6 +14,15 @@ from app.logging_setup import configure_logging
 from app.middleware import AccessLogMiddleware, BodySizeLimitMiddleware
 from app.observability import init_sentry
 from app.ratelimit import limiter
+from app.routers import places
+from app.services.db import close_client, get_database, ping
+from app.services.llm_health import llm_status
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    yield
+    await close_client()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -17,7 +30,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging()
     init_sentry(settings)
 
-    app = FastAPI(title="Sidequestmaxxing API", version=settings.git_sha)
+    app = FastAPI(title="Sidequestmaxxing API", version=settings.git_sha, lifespan=lifespan)
     app.state.settings = settings
     app.state.limiter = limiter
     install_error_handlers(app)
@@ -35,8 +48,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
-        return {"status": "ok", "db": "unknown", "llm": "unknown"}
+        db_state, llm_state = await asyncio.gather(
+            ping(get_database(settings)), llm_status(settings.llm_url)
+        )
+        return {"status": "ok", "db": db_state, "llm": llm_state}
 
+    app.include_router(places.router)
     return app
 
 

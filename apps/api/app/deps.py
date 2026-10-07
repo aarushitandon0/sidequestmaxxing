@@ -3,9 +3,12 @@
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Request
+from pymongo.asynchronous.database import AsyncDatabase
 
-from app.errors import ApiError
+from app.errors import ApiError, db_unavailable
+from app.services.db import Doc, get_database
+from app.services.embeddings import Embedder, get_embedder
 
 DEVICE_HEADER = "X-Device-Id"
 
@@ -33,3 +36,15 @@ async def get_device_id(
 
 
 DeviceId = Annotated[str, Depends(get_device_id)]
+
+
+async def get_db(request: Request) -> AsyncDatabase[Doc]:
+    """Database handle; 503 with a friendly message when Atlas isn't configured."""
+    db = get_database(request.app.state.settings)
+    if db is None:
+        raise db_unavailable()
+    return db
+
+
+async def get_embedder_dep(request: Request) -> Embedder:
+    return get_embedder(request.app.state.settings.embedding_model)

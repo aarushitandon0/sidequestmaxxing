@@ -36,10 +36,14 @@ Expected: `{"status":"ok", ...}` and "smoke test passed". Then open the `sqm-web
 
 ## 4. Atlas setup (after P3)
 ```bash
-cd apps/api && source .venv/bin/activate
-python ../../scripts/create_indexes.py
-python ../../scripts/seed_places.py --bbox "<S,W,N,E>" --city "<name>"
+# from the repo root, using the API virtualenv; MONGODB_URI in ./.env
+source apps/api/.venv/bin/activate
+python scripts/create_indexes.py
+python scripts/seed_places.py --bbox "<S,W,N,E>" --city "<name>" --dry-run   # check counts first
+python scripts/seed_places.py --city "<name>" --from-cache                   # embed + upsert, no 2nd Overpass call
 ```
+Then check: `curl -H "X-Device-Id: $(python -c 'import uuid;print(uuid.uuid4())')" "$API_BASE_URL/v1/places/near?lat=<lat>&lng=<lng>&q=birds"`.
+Vector indexes build asynchronously in Atlas — wait until they show "READY" before testing.
 (Run locally with `MONGODB_URI` in your `.env`. In Atlas → Network Access, allow your IP and Render's outbound IPs, or 0.0.0.0/0 for the contest with a strong password.)
 
 ## 5. After judging

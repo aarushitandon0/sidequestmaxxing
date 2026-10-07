@@ -76,3 +76,7 @@ def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(RateLimitExceeded, _rate_limited)
     app.add_exception_handler(Exception, _unhandled)
+
+
+def db_unavailable() -> ApiError:
+    return ApiError(503, "db_unavailable", "The quest archive is unreachable right now.")

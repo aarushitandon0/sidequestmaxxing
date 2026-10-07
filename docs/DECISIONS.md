@@ -85,6 +85,12 @@ Sources that could not be reached from the build session are marked **(unverifie
 | D-11 | 2026-10-07 | `X-Device-Id` must be a UUID **v4** (v1 rejected — it embeds MAC/time). | §9.3 privacy. |
 | D-12 | 2026-10-07 | slowapi uses in-memory storage keyed by device id (fallback: client IP). Valid only while `sqm-api` runs one instance. | Simplest thing for a single starter instance. |
 | D-13 | 2026-10-07 | Validation errors list field names only, never submitted values; logs carry route template, never query strings. | §9.3 no coordinates/free text in logs. |
+| D-14 | 2026-10-07 | Added `library` to the place `kind` enum (§5.1) — §7.2 already fetches `amenity=library`. Fixed the §5.1 example `cell5` (`te7ud` → `tek3r`, computed for Vetal Tekdi). | Spec consistency. |
+| D-15 | 2026-10-07 | `memories_vec` gets a second filter field `ts` (§5.5 updated) so the memory check pre-filters to the last 14 days. | Cheaper and more accurate than post-filtering. |
+| D-16 | 2026-10-07 | OSM kind mapping: `natural=wood` and `tourism=attraction` → `other`; museum/library/cafe are `indoor`; `needs_daylight = !indoor && lit != yes`; prefer `name:en`; drop `access=private|no`, nameless, and centre-less elements. | §7.2; keeps the schema enum honest. |
+| D-17 | 2026-10-07 | Search area = geohash-5 centre + 8 neighbours. Worst case this covers only ~4.9 km from the user, so `radius_m` 5–6 km may miss edge places. Accepted for now; if needed, switch to precision 4 when `radius_m > 4500`. | Simplicity; most quests are ≤ 2.5 km. |
+| D-18 | 2026-10-07 | Repo scripts use sync PyMongo; the API uses the async client. `/v1/places/near` maps Mongo errors to 503 `db_unavailable`. | Scripts are one-shot CLIs. |
+| D-19 | 2026-10-07 | Overpass sample in `apps/api/tests/fixtures/overpass_sample.json` is **synthetic** (shape-only). The real seed hasn't run — Overpass, Hugging Face and Atlas are unreachable from the build container. | Honesty: no fake "real" data. |
 
 ---
 
