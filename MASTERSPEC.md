@@ -121,7 +121,7 @@ Render (hosting), MongoDB Atlas (data), ElevenLabs (voice), Sentry (tracing), Ti
 ### 3.1 Sequence: Generate quest
 1. Client → `POST /v1/quests/generate` with coarse location (lat/lng rounded to 3 decimals), minutes, radius, mood, interests, persona.
 2. API **Context Builder** adds local time, daylight window, weather (Open-Meteo).
-3. **Scout**: compute `cell5` geohashes (centre + 8 neighbours) → Atlas `$vectorSearch` on `places` with filter `cell5 ∈ cells`, query vector = embedding of `interests + mood + category-to-avoid`. Post-filter by haversine distance ≤ radius and by safety/time rules → top 8 **candidates**.
+3. **Scout**: compute `cell5` geohashes (centre + 8 neighbours) → Atlas `$vectorSearch` on `places` with filter `cell5 ∈ cells`, query vector = embedding of `sanitized interests + a fixed mood phrase` (recent categories are *not* embedded — "avoid X" would pull results toward X; diversity is handled by the memory check and a max-3-per-kind cap instead). Post-filter by haversine distance ≤ radius and by safety/time rules (indoor-only, daylight for daylight-only places, round-trip walk + 10 min ≤ minutes available) → top 8 **candidates**.
 4. **Memory check**: `$vectorSearch` on `memories` (filter `device_id`) to find recently similar quests; drop candidates/themes seen in the last 14 days.
 5. **Quest Master**: call sqm-llm with system prompt + context JSON + candidates; constrained to JSON schema.
 6. **Validators** (section 7.4). On failure → one retry with the failure reasons appended; on second failure → fallback engine.
@@ -287,7 +287,7 @@ Server checks: quest belongs to device; state is `accepted`; `elapsed_seconds �
 
 ### 7.1 Context Builder (deterministic)
 Inputs: request. Outputs: `{part_of_day, weekday, daylight_minutes_left, weather{summary,temp_c,precip_prob}, indoor_only: bool}`.
-Rules: `indoor_only=true` if thunderstorm, precip_prob ≥ 70%, temp ≥ 38 °C, or `daylight_minutes_left < est window` for daylight-only places.
+Rules: `indoor_only=true` if thunderstorm, precip_prob ≥ 70% (worst hour in the quest window), temp ≥ 38 °C, or `daylight_minutes_left < 35` (no daylight quest can fit: 5 min + 30 min buffer). Per-place daylight ("`est + 30 ≤ daylight_minutes_left` for daylight-only places") is enforced by the Scout filter and V10. Sunrise/sunset come from Open-Meteo, with an offline solar calculation as fallback so daylight rules never depend on a vendor.
 
 ### 7.2 Scout (deterministic + vector search)
 Described in 3.1. Output ≤ 8 candidates: `{id,name,kind,distance_m,tags_summary,indoor,needs_daylight}`.
