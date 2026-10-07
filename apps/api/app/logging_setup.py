@@ -6,6 +6,10 @@ from datetime import UTC, datetime
 
 _RESERVED = set(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
 
+# Third-party loggers that would print request URLs, which carry coordinates
+# (Open-Meteo query, /v1/places/near?lat=..). Our AccessLogMiddleware logs route templates only.
+QUIET_LOGGERS = ("httpx", "httpcore", "uvicorn.access")
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -29,3 +33,5 @@ def configure_logging(level: str = "INFO") -> None:
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(level)
+    for name in QUIET_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)

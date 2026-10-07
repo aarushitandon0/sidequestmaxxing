@@ -1,6 +1,7 @@
 """Request dependencies."""
 
 import uuid
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, Header, Request
@@ -9,6 +10,8 @@ from pymongo.asynchronous.database import AsyncDatabase
 from app.errors import ApiError, db_unavailable
 from app.services.db import Doc, get_database
 from app.services.embeddings import Embedder, get_embedder
+from app.services.llm_client import LLMClient
+from app.services.weather import WeatherClient, get_weather_client
 
 DEVICE_HEADER = "X-Device-Id"
 
@@ -48,3 +51,29 @@ async def get_db(request: Request) -> AsyncDatabase[Doc]:
 
 async def get_embedder_dep(request: Request) -> Embedder:
     return get_embedder(request.app.state.settings.embedding_model)
+
+
+async def get_weather_client_dep() -> WeatherClient:
+    return get_weather_client()
+
+
+async def get_llm_client(request: Request) -> LLMClient | None:
+    """One client per app; None when no LLM URL is configured (→ fallback engine)."""
+    state = request.app.state
+    if not hasattr(state, "llm_client"):
+        settings = state.settings
+        state.llm_client = (
+            LLMClient(settings.llm_url, model=settings.llm_model, timeout_s=settings.llm_timeout_s)
+            if settings.llm_url
+            else None
+        )
+    client: LLMClient | None = state.llm_client
+    return client
+
+
+def utc_now() -> datetime:
+    """Server clock as a dependency so tests can pin it (daylight rules, expiry)."""
+    return datetime.now(UTC)
+
+
+Now = Annotated[datetime, Depends(utc_now)]

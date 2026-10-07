@@ -4,7 +4,7 @@
 keys, so an LLM that tries to set xp/rarity/id fails V1. `Quest` adds server-owned fields.
 """
 
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -63,6 +63,14 @@ class Quest(QuestDraft):
     place: PlaceRef | None = None
 
 
-def llm_json_schema() -> dict[str, object]:
-    """JSON schema for constrained decoding of LLM output (server-owned fields excluded)."""
-    return QuestDraft.model_json_schema()
+def llm_json_schema() -> dict[str, Any]:
+    """JSON schema for constrained decoding of LLM output (server-owned fields excluded).
+
+    Every property is marked required (nullable ones stay nullable), so the grammar makes the
+    model write `place_id: null` explicitly instead of silently omitting it.
+    """
+    schema = QuestDraft.model_json_schema()
+    for obj in [schema, *schema.get("$defs", {}).values()]:
+        if "properties" in obj:
+            obj["required"] = list(obj["properties"])
+    return schema

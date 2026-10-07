@@ -55,3 +55,33 @@ async def recent_similar_memories(
     cursor = await db["memories"].aggregate(pipeline)
     docs: list[Doc] = await cursor.to_list(length=None)
     return [Memory.model_validate(d) for d in docs]
+
+
+async def upsert_memory(
+    db: AsyncDatabase[Doc],
+    *,
+    quest_id: str,
+    device_id: str,
+    ts: datetime,
+    text: str,
+    category: Category,
+    place_id: str | None,
+    embedding: list[float],
+    kind: str,
+) -> None:
+    """One memory per quest (`_id` = quest id), so skip/complete can't double-count it."""
+    await db["memories"].update_one(
+        {"_id": quest_id},
+        {
+            "$set": {
+                "device_id": device_id,
+                "ts": ts,
+                "text": text,
+                "category": category,
+                "place_id": place_id,
+                "embedding": embedding,
+                "kind": kind,  # "completed" | "skipped"
+            }
+        },
+        upsert=True,
+    )

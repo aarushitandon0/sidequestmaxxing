@@ -8,6 +8,7 @@ from app.deps import DEVICE_HEADER, parse_device_id
 
 GENERATE_LIMIT = "6/minute;30/day"
 COMPLETE_LIMIT = "10/minute"
+QUEST_ACTION_LIMIT = "30/minute"  # accept/skip: not in §6.5; generous anti-hammering only
 TTS_LIMIT = "20/hour"
 
 

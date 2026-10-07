@@ -31,11 +31,13 @@ uvicorn app.main:app --reload --port 8000
 # Web
 cd apps/web && npm ci
 npm run dev | npm run build | npm run test | npm run lint | npm run typecheck
+npm run e2e                                 # Playwright (pre-installed Chromium; mocked API, fake verifier build)
 
 # Data / infra
 python scripts/create_indexes.py            # collections + Atlas vector indexes
 python scripts/seed_places.py --bbox "<S,W,N,E>" --city "<name>"
 bash scripts/smoke_test.sh                  # hits healthz + generate against API_BASE_URL
+python scripts/bench_llm.py --base-url http://localhost:8080 --n 20   # gate G1 latency → evals/
 ```
 
 ## Working agreement

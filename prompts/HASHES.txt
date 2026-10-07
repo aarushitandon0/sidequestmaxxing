@@ -1,0 +1,5 @@
+# SHA-256 of each prompt file, exactly as stored (sha256sum format).
+# Training and serving MUST use byte-identical prompts. If you change a prompt on purpose,
+# update this file in the same commit (`cd prompts && sha256sum <file>`) and retrain/re-eval.
+9b6929e22fbfe0f12d3c03a6b654278f1491db26bd312026696f5b9222e5d442  quest_master.system.txt
+38687f0189753477d2556590eb5b185def3294d1954552e4f810313e28007bd0  verifier.gemma.txt

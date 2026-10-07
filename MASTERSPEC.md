@@ -187,18 +187,18 @@ Indexes:
 ```
 
 ### 5.2 `quests`
-`{_id, device_id, created_at, request_digest, quest{…schema 6.2…}, source: "llm"|"fallback", model: "name@sha", status: "offered|accepted|completed|expired", accepted_at, expires_at}`
+`{_id, device_id, created_at, request_digest (hash of non-location request fields), quest{…schema 6.2…}, source: "llm"|"fallback", model: "name@sha", status: "offered|accepted|completed|skipped|expired", accepted_at, skipped_at?, expires_at}`. Offered quests expire 6 h after creation.
 Index: `(device_id, created_at desc)`.
 
 ### 5.3 `completions`
-`{_id, device_id, quest_id, completed_at, verification{method, match, confidence, seen}, elapsed_seconds, screen_seconds, screen_share, within_radius: bool|null, xp_awarded, category, place_id, note}`
+`{_id, device_id, quest_id, completed_at, local_date, verification{method, match, confidence, seen}, elapsed_seconds, screen_seconds, screen_share, within_radius: bool|null, xp_awarded, category, place_id, place_name, title, note, result{…completion response…}}`
 Index: `(device_id, completed_at desc)`; unique `(quest_id)`.
 
 ### 5.4 `users` (anonymous devices)
-`{_id: device_id, created_at, persona, interests[], default_radius_m, skills{category: xp}, total_xp, streak_days, last_completed_date, settings{safe_mode: true, voice: true}}`
+`{_id: device_id, created_at, persona, interests[], default_radius_m, skills{category: xp}, total_xp, streak_days, last_completed_date (local YYYY-MM-DD), utc_offset_min, settings{safe_mode: true, voice: true}}`
 
 ### 5.5 `memories`
-`{_id, device_id, ts, text, category, place_id, embedding[384]}`
+`{_id: quest_id, device_id, ts, text, category, place_id, embedding[384], kind: "completed"|"skipped"}`
 **Atlas Vector Search index `memories_vec`**: vector(384, cosine) + filters `device_id`, `ts` (so the memory check can pre-filter to the last 14 days).
 TTL: delete after 90 days (index on `ts`, `expireAfterSeconds`).
 
@@ -222,6 +222,7 @@ Base: `/v1`. JSON only (except TTS audio). Header `X-Device-Id: <uuid v4>` requi
 | POST | `/v1/quests/{id}/skip` | Skip (no penalty; used for memory) |
 | GET | `/v1/profile` | XP, skills, streak, recent completions |
 | PUT | `/v1/profile/settings` | persona, interests, radius, voice |
+| DELETE | `/v1/profile` | Delete all data for this device (204) |
 | POST | `/v1/recap/weekly` | Generate/fetch weekly Chronicle |
 | POST | `/v1/tts` | Proxy to ElevenLabs → `audio/mpeg` |
 | GET | `/v1/places/near` | (debug/demo) candidate places for a point |
@@ -312,7 +313,7 @@ Rules:
 8. Always include a short safety_note.
 ```
 **User message**: a JSON object `{"context":{…}, "persona":"…", "mood":"…", "interests":[…], "minutes_available":45, "recent_categories":[…], "candidates":[…]}`.
-**Call**: `POST http://${LLM_HOSTPORT}/v1/chat/completions` with `temperature 0.8`, `top_p 0.95`, `max_tokens 380`, JSON-schema-constrained decoding. **[VERIFY]** exact parameter name for schema/grammar in the llama.cpp server README at build time (`response_format`/`json_schema`).
+**Call**: `POST http://${LLM_HOSTPORT}/v1/chat/completions` with `temperature 0.8`, `top_p 0.95`, `max_tokens 380`, JSON-schema-constrained decoding. Resolved (DECISIONS D-27): `response_format: {"type":"json_schema","json_schema":{"name":"quest","schema":<QuestDraft schema>}}` plus `chat_template_kwargs: {"enable_thinking": false}`.
 Timeout 25 s. One retry with failure reasons appended as an extra user message.
 
 ### 7.4 Validators (pure functions; unit-tested; also used as the training filter and eval metric)
@@ -341,7 +342,7 @@ You are a strict photo checker. Task: decide if this photo shows: "{photo_prompt
 Reply with JSON only: {"match": true|false, "confidence": 0.0-1.0, "seen": "<=12 words describing the main subject"}
 If unsure, set match=false.
 ```
-Accept if `match && confidence ≥ 0.6`. Load model only after explicit user opt-in (large download; Wi-Fi advisory); cache in browser storage; show progress; never block the rest of the app.
+Accept if `match && confidence ≥ 0.6`. The model is stored in OPFS (resumable download from `VITE_GEMMA_MODEL_URL`, or imported from a file the player downloaded after accepting the Gemma terms — D-47/D-48). Load model only after explicit user opt-in (large download; Wi-Fi advisory); cache in browser storage; show progress; never block the rest of the app.
 **Honesty note (put in post):** client-side verification can be spoofed. This is a single-player game, so that's acceptable; say so.
 
 ### 7.7 Chronicler
@@ -445,6 +446,8 @@ Held-out 120 contexts. Run **baseline** (same base model, same Q4_K_M quantizati
 7. **Profile / Skill Tree**: 7 categories with levels; recent quests; settings; delete data.
 8. **Chronicle**: weekly story; Listen button; share as text.
 9. **Map (optional)**: Leaflet with the quest place pin; OSM attribution.
+
+Routes (D-49): `/` and `/story` landing; app at `/home`, `/onboarding`, `/quest`, `/walk`, `/verify`, `/reward`, `/profile`, `/chronicle`, `/settings`, `/map`; PWA `start_url` `/home`. Visual design = the project design template (D-45).
 
 ### 11.2 Non-functional
 - Installable PWA, manifest, icons, offline shell. Quest data cached after generation so Walk Mode works with no signal.

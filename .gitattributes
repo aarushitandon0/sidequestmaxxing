@@ -1,0 +1,2 @@
+# Prompts are hashed byte-for-byte: never let git rewrite their line endings.
+prompts/*.txt -text
