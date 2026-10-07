@@ -1,3 +1,5 @@
+import pytest
+
 from app.observability import SCRUBBED, hash_device_id, scrub_event
 
 
@@ -29,3 +31,16 @@ def test_scrub_event_removes_coordinates_text_and_hashes_device() -> None:
 def test_hash_device_id_is_stable_and_short() -> None:
     assert hash_device_id("a") == hash_device_id("a")
     assert len(hash_device_id("a")) == 20
+
+
+def test_url_logging_third_parties_are_quiet(caplog: pytest.LogCaptureFixture) -> None:
+    """httpx/uvicorn INFO logs include query strings with lat/lng (MASTERSPEC §9.3)."""
+    import logging
+
+    from app.logging_setup import QUIET_LOGGERS, configure_logging
+
+    configure_logging()
+    for name in QUIET_LOGGERS:
+        assert not logging.getLogger(name).isEnabledFor(logging.INFO), name
+    logging.getLogger("httpx").info("HTTP Request: GET https://x/?latitude=18.52&longitude=73.85")
+    assert "latitude" not in caplog.text
