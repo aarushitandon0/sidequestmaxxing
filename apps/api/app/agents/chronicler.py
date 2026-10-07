@@ -1,17 +1,38 @@
 """Chronicler input format + deterministic fallback recap (MASTERSPEC §7.7).
 
-The user-message builder is shared by training (make_recap_examples.py) and, later, the
-/v1/recap/weekly endpoint (P18), so both see the same format. The fallback writes a plain,
-always-valid chronicle from the facts alone when the model is unavailable.
+The user-message builder is shared by training (make_recap_examples.py) and the
+/v1/recap/weekly endpoint, so both see the same format. `run_chronicler` mirrors the Quest
+Master: call → validators R1-R7 → one retry with the failure reasons → deterministic
+facts-only fallback on a second failure or any LLM error. Never raises.
 """
 
 import json
+import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any, Literal
 
-from app.models.enums import Persona
+from app.agents.quest_master import extract_json_text
+from app.models.enums import CATEGORIES, Persona
+from app.observability import span
 from app.prompts import load_prompt
-from app.validators.recap import RecapCompletion, RecapDraft, expected_stats, word_count
+from app.services.llm_client import LLMClient, LLMError
+from app.validators.recap import (
+    MAX_WORDS,
+    MIN_WORDS,
+    RecapCompletion,
+    RecapDraft,
+    RecapResult,
+    expected_stats,
+    validate_recap,
+    word_count,
+)
+
+log = logging.getLogger("sqm.chronicler")
+
+FALLBACK_MODEL = "recap-template@v1"
+RECAP_MAX_TOKENS = 700  # 260 words ≈ 350 tokens + JSON; the quest cap (380) would truncate
+RecapSource = Literal["llm", "fallback"]
 
 CHRONICLER_SYSTEM = "chronicler.system.txt"
 
@@ -98,3 +119,91 @@ def fallback_recap(inp: RecapInput) -> RecapDraft:
     while word_count(" ".join([*lines, ending])) > 255 and len(lines) > 3:
         lines.pop(2)  # very long weeks: drop per-quest lines, keep the totals
     return RecapDraft(text=" ".join([*lines, ending]), stats=stats)
+
+
+# --- LLM path (P18) ----------------------------------------------------------------------------
+
+
+def recap_json_schema() -> dict[str, Any]:
+    """Grammar for llama.cpp `response_format`; R1-R7 still decide."""
+    return {
+        "type": "object",
+        "properties": {
+            "text": {"type": "string"},
+            "stats": {
+                "type": "object",
+                "properties": {
+                    "quests": {"type": "integer", "minimum": 0},
+                    "minutes": {"type": "integer", "minimum": 0},
+                    "top_category": {"enum": [*CATEGORIES, None]},
+                },
+                "required": ["quests", "minutes", "top_category"],
+                "additionalProperties": False,
+            },
+        },
+        "required": ["text", "stats"],
+        "additionalProperties": False,
+    }
+
+
+@dataclass
+class ChroniclerResult:
+    recap: RecapDraft
+    source: RecapSource
+    model: str
+    retries: int = 0
+    validator_failures: list[str] = field(default_factory=list)
+    fallback_reason: str | None = None
+
+
+def recap_retry_message(result: RecapResult) -> str:
+    reasons = "; ".join(f"{fid}: {detail}" for fid, detail in result.failures)
+    return (
+        f"That chronicle broke the rules ({reasons}). Write it again as JSON only: "
+        f"{MIN_WORDS}-{MAX_WORDS} words, only places from COMPLETIONS, exact stats."
+    )
+
+
+def _fallback(inp: RecapInput, reason: str) -> ChroniclerResult:
+    with span("fallback", reason=reason):
+        return ChroniclerResult(fallback_recap(inp), "fallback", FALLBACK_MODEL,
+                                fallback_reason=reason)  # fmt: skip
+
+
+async def run_chronicler(inp: RecapInput, client: LLMClient | None) -> ChroniclerResult:
+    """Never raises. Requires ≥ 1 completion (the endpoint handles empty weeks)."""
+    if client is None:
+        return _fallback(inp, "llm_not_configured")
+    messages = build_recap_messages(inp)
+    failures: list[str] = []
+    for attempt in range(2):
+        try:
+            with span("gen_ai.chat", name=f"chat {client.model}") as s:
+                s.set_data("gen_ai.request.model", client.model)
+                s.set_data("attempt", attempt)
+                res = await client.chat(
+                    messages, recap_json_schema(), max_tokens=RECAP_MAX_TOKENS, schema_name="recap"
+                )
+                s.set_data("gen_ai.usage.input_tokens", res.prompt_tokens)
+                s.set_data("gen_ai.usage.output_tokens", res.completion_tokens)
+        except LLMError as exc:
+            log.warning("recap llm call failed", extra={"kind": exc.kind, "attempt": attempt})
+            out = _fallback(inp, f"llm_{exc.kind}")
+            out.retries, out.validator_failures = attempt, failures
+            return out
+        with span("validators") as s:
+            result = validate_recap(extract_json_text(res.content), inp.completions)
+            s.set_data("ok", result.ok)
+            s.set_data("failures", result.failure_ids)
+        if result.ok and result.recap is not None:
+            return ChroniclerResult(result.recap, "llm", res.model, attempt, failures)
+        failures.extend(result.failure_ids)
+        log.info("llm recap rejected", extra={"failures": result.failure_ids, "attempt": attempt})
+        messages = [
+            *messages,
+            {"role": "assistant", "content": res.content},
+            {"role": "user", "content": recap_retry_message(result)},
+        ]
+    out = _fallback(inp, "validation_failed_twice")
+    out.retries, out.validator_failures = 1, failures
+    return out

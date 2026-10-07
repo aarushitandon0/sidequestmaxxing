@@ -20,7 +20,10 @@ log = logging.getLogger("sqm.tts")
 
 ELEVENLABS_BASE_URL = "https://api.elevenlabs.io"
 MAX_TTS_CHARS = 600
-TtsKind = Literal["briefing", "hint"]
+# A 180-260 word chronicle is ~1.1-1.7k chars; still bounded by the daily char budget (D-61).
+MAX_RECAP_TTS_CHARS = 1800
+TtsKind = Literal["briefing", "hint", "recap"]
+QuestTtsKind = Literal["briefing", "hint"]
 
 
 class TtsUnavailableError(Exception):
@@ -34,7 +37,7 @@ class TtsUnavailableError(Exception):
         self.reason = reason
 
 
-def tts_text(quest: Doc, kind: TtsKind) -> str:
+def tts_text(quest: Doc, kind: QuestTtsKind) -> str:
     """The words to speak, taken only from the stored quest."""
     if kind == "briefing":
         return str(quest["briefing"])

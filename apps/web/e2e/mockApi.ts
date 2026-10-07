@@ -50,6 +50,10 @@ export async function mockApi(page: Page): Promise<Request[]> {
         within_radius: null, screen_share: 0.03, daily_cap_reached: false })
     }
     if (path.startsWith('/v1/profile')) return json(PROFILE)
+    if (path === '/v1/recap/weekly') {
+      return json({ id: null, week_start: '2026-10-01', week_end: '2026-10-07', source: 'empty', created_at: null,
+        text: 'No quests in your chronicle yet this week.', stats: { quests: 0, minutes: 0, top_category: null } })
+    }
     return json({ error: { code: 'not_found', message: 'nope' } }, 404)
   })
   return seen

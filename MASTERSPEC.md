@@ -134,7 +134,7 @@ Render (hosting), MongoDB Atlas (data), ElevenLabs (voice), Sentry (tracing), Ti
 4. Return `{xp_awarded, level_ups[], streak}`.
 
 ### 3.3 Sequence: Weekly Chronicle
-`POST /v1/recap/weekly` → gather last 7 days completions → Chronicler prompt → 180–260 word story + 3 stats → store in `recaps` → return (optionally spoken).
+`POST /v1/recap/weekly` → gather last 7 days completions (the 7 local days ending today, by `local_date`) → Chronicler prompt → validators R1–R7 (one retry) → facts-only template on failure → 180–260 word story + 3 stats (always server-computed) → store in `recaps`, one per (device, `week_start`); a repeat call returns the stored recap unless the week's completions changed → return (optionally spoken via `/v1/tts` kind `recap`). An empty week returns `source: "empty"` and stores nothing.
 
 ---
 
@@ -224,7 +224,7 @@ Base: `/v1`. JSON only (except TTS audio). Header `X-Device-Id: <uuid v4>` requi
 | PUT | `/v1/profile/settings` | persona, interests, radius, voice |
 | DELETE | `/v1/profile` | Delete all data for this device (204) |
 | POST | `/v1/recap/weekly` | Generate/fetch weekly Chronicle |
-| POST | `/v1/tts` | `{quest_id, kind: "briefing"\|"hint"}` → proxy to ElevenLabs → `audio/mpeg` (text taken from the stored quest, never from the client) |
+| POST | `/v1/tts` | `{quest_id, kind: "briefing"\|"hint"}` or `{recap_id, kind: "recap"}` → proxy to ElevenLabs → `audio/mpeg` (text taken from the stored quest/recap of this device, never from the client) |
 | GET | `/v1/places/near` | (debug/demo) candidate places for a point |
 
 ### 6.2 Quest schema (the LLM outputs only fields marked 🤖; server fills the rest)
@@ -278,7 +278,8 @@ Server checks: quest belongs to device; state is `accepted`; `elapsed_seconds �
 ### 6.5 Rate limits (slowapi)
 - generate: 6/min and 30/day per device.
 - complete: 10/min.
-- tts: 20/hour per device + global daily char budget (`TTS_DAILY_CHAR_BUDGET`). Max 600 chars per request.
+- tts: 20/hour per device + global daily char budget (`TTS_DAILY_CHAR_BUDGET`). Max 600 chars per request (1800 for kind `recap`, D-61).
+- recap: 10/hour per device (a cache hit is a read; a miss is one LLM call).
 
 ---
 
