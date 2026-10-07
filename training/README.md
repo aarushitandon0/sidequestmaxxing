@@ -23,6 +23,7 @@ python -m pytest -q training/tests                # pipeline tests (free backend
 | 8. SFT plan | `python training/train_sft.py --smoke` (prints rows/tokens, trains nothing) | no |
 | 9. SFT smoke run | `python training/train_sft.py --smoke --go` (200 rows, 1 epoch, 1 LR) — show metrics, then decide | **yes**, ≈ $0.10 |
 | 10. SFT sweep | `python training/train_sft.py --go` (3 LRs x 3 epochs, best by val pass-rate) | **yes**, ≈ $13 |
+| 10b. Export → GGUF → HF → sqm-llm | `python training/export_model.py <step> --run <run> [--go]` — see `docs/MODEL_EXPORT.md` | no (local compute); public upload needs your OK |
 | 11. Eval, one arm per served model | `python training/eval.py run --arm baseline\|tuned --base-url … --label <served model id>` | no (your server) |
 | 12. Eval report + voice judge | `python training/eval.py report --judge-url … --judge-model … --judge-family llama` | judge calls, if hosted |
 

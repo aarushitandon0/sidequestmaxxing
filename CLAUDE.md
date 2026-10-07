@@ -42,6 +42,7 @@ python scripts/bench_llm.py --base-url http://localhost:8080 --n 20   # gate G1 
 # Training (repo root, API venv; see training/README.md)
 python -m pytest -q training/tests        # pipeline tests, free backends
 python training/make_contexts.py --synthetic --scale 0.05   # dry run, no Atlas
+python training/export_model.py <download|merge|gguf|sha|card|publish> --run <run>   # P17; plan-only without --go (docs/MODEL_EXPORT.md)
 python training/eval.py run --arm tuned --mock --label m && python training/eval.py run --arm baseline --mock --label b && python training/eval.py report --mock-judge --embedder hash   # eval dry run
 ```
 
