@@ -10,7 +10,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
@@ -20,7 +20,9 @@ from app.observability import span
 from app.ratelimit import TTS_LIMIT, limiter
 from app.services.db import Doc
 from app.services.quests_repo import get_quest
+from app.services.recaps import get_recap
 from app.services.tts import (
+    MAX_RECAP_TTS_CHARS,
     MAX_TTS_CHARS,
     AudioStream,
     ElevenLabsClient,
@@ -38,10 +40,37 @@ Db = Annotated[AsyncDatabase[Doc], Depends(get_db)]
 
 
 class TtsRequest(BaseModel):
+    """`quest_id` for briefing/hint, `recap_id` for recap. Never any text."""
+
     model_config = ConfigDict(extra="forbid")
 
-    quest_id: str = Field(min_length=1, max_length=64)
+    quest_id: str | None = Field(default=None, min_length=1, max_length=64)
+    recap_id: str | None = Field(default=None, min_length=1, max_length=64)
     kind: TtsKind = "briefing"
+
+    @model_validator(mode="after")
+    def _one_target(self) -> "TtsRequest":
+        if self.kind == "recap":
+            if self.recap_id is None or self.quest_id is not None:
+                raise ValueError("kind 'recap' takes recap_id only")
+        elif self.quest_id is None or self.recap_id is not None:
+            raise ValueError("kind 'briefing'/'hint' takes quest_id only")
+        return self
+
+
+async def _text_for(db: AsyncDatabase[Doc], body: TtsRequest, device_id: str) -> str:
+    """The words to speak, read server-side from the device's own quest or recap."""
+    if body.kind == "recap":
+        assert body.recap_id is not None
+        recap = await get_recap(db, device_id, body.recap_id)
+        if recap is None:
+            raise ApiError(404, "recap_not_found", "That chronicle isn't in your quest log.")
+        return str(recap["text"])
+    assert body.quest_id is not None
+    doc = await get_quest(db, body.quest_id, device_id)
+    if doc is None:
+        raise ApiError(404, "quest_not_found", "That quest isn't in your quest log.")
+    return tts_text(doc["quest"], body.kind)
 
 
 def unavailable() -> ApiError:
@@ -73,14 +102,12 @@ async def tts(
     now: Now,
 ) -> StreamingResponse:
     try:
-        doc = await get_quest(db, body.quest_id, device_id)
+        text = await _text_for(db, body, device_id)
     except PyMongoError as exc:
         raise db_unavailable() from exc
-    if doc is None:
-        raise ApiError(404, "quest_not_found", "That quest isn't in your quest log.")
 
-    text = tts_text(doc["quest"], body.kind)
-    if len(text) > MAX_TTS_CHARS:
+    limit = MAX_RECAP_TTS_CHARS if body.kind == "recap" else MAX_TTS_CHARS
+    if len(text) > limit:
         raise ApiError(422, "tts_too_long", "That's a lot of words. Reading it aloud locally.")
     if client is None:
         raise unavailable()

@@ -24,3 +24,4 @@ playwright-report/
 # Training artefacts (generated; never committed)
 training/data/
 models/
+!apps/api/app/models/

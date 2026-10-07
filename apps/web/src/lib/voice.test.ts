@@ -90,6 +90,14 @@ describe('voice layer (ElevenLabs → cache → browser speech)', () => {
     expect(fetch.mock.calls.some(([u]) => String(u).endsWith('/v1/tts'))).toBe(false)
   })
 
+  it('a recap sends only recap_id and kind "recap"', async () => {
+    const fetch = mockFetch(audioOk)
+    const v = await load()
+    expect(await v.speakQuest({ questId: 'recap-1', kind: 'recap', text: TEXT })).toBe('elevenlabs')
+    const ttsCall = fetch.mock.calls.find(([u]) => String(u).endsWith('/v1/tts'))!
+    expect(JSON.parse(String(ttsCall[1]!.body))).toEqual({ recap_id: 'recap-1', kind: 'recap' })
+  })
+
   it.each([
     ['budget exceeded', () => err(429)],
     ['voice unavailable', () => err(503)],

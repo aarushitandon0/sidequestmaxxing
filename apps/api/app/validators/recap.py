@@ -1,6 +1,6 @@
 """Chronicler (weekly recap) validators (MASTERSPEC §7.7). Pure functions.
 
-Used as the training-data filter now and by /v1/recap/weekly later (P18):
+Used as the training-data filter and by /v1/recap/weekly:
   R1 parses as {"text": str, "stats": {...}} · R2 180-260 words · R3 stats match the input
   R4 banned-term lint (V4 rules) · R5 no contact info / links · R6 named places come from the
   input (heuristic: Title-Case phrases ending in a place noun must match an input place name)

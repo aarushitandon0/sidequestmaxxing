@@ -38,21 +38,26 @@ class LLMResponse:
 
 
 def build_payload(
-    messages: list[dict[str, str]], schema: dict[str, Any] | None, model: str
+    messages: list[dict[str, str]],
+    schema: dict[str, Any] | None,
+    model: str,
+    *,
+    max_tokens: int = MAX_TOKENS,
+    schema_name: str = "quest",
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "model": model,
         "messages": messages,
         "temperature": TEMPERATURE,
         "top_p": TOP_P,
-        "max_tokens": MAX_TOKENS,
+        "max_tokens": max_tokens,
         "stream": False,
         "chat_template_kwargs": {"enable_thinking": False},
     }
     if schema is not None:
         payload["response_format"] = {
             "type": "json_schema",
-            "json_schema": {"name": "quest", "schema": schema},
+            "json_schema": {"name": schema_name, "schema": schema},
         }
     return payload
 
@@ -103,9 +108,16 @@ class LLMClient:
         self._transport = transport
 
     async def chat(
-        self, messages: list[dict[str, str]], schema: dict[str, Any] | None = None
+        self,
+        messages: list[dict[str, str]],
+        schema: dict[str, Any] | None = None,
+        *,
+        max_tokens: int = MAX_TOKENS,
+        schema_name: str = "quest",
     ) -> LLMResponse:
-        payload = build_payload(messages, schema, self.model)
+        payload = build_payload(
+            messages, schema, self.model, max_tokens=max_tokens, schema_name=schema_name
+        )
         start = time.perf_counter()
         try:
             # httpx timeouts are per network operation; asyncio.timeout bounds the whole call.

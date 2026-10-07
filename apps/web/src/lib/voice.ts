@@ -7,16 +7,17 @@ import { canSpeak, speak, stopSpeaking } from './speech'
 /**
  * The Dungeon Master's voice (MASTERSPEC §2.4, P13). Order of preference:
  *   1. a pre-generated demo clip (public/demo-audio, matched by the text's SHA-256),
- *   2. ElevenLabs audio cached on this device (Cache Storage, per quest id + kind),
- *   3. POST /v1/tts (server picks the text from the quest — we never send text),
+ *   2. ElevenLabs audio cached on this device (Cache Storage, per quest/recap id + kind),
+ *   3. POST /v1/tts (server picks the text from the quest or recap — we never send text),
  *   4. the browser's speechSynthesis with the same text.
  * The text is always on screen too. Any failure silently falls through to the next step.
  */
 
-export type VoiceKind = 'briefing' | 'hint'
+export type VoiceKind = 'briefing' | 'hint' | 'recap'
 export type VoiceSource = 'demo' | 'cache' | 'elevenlabs' | 'browser' | 'none'
 
 export interface SpeakQuestOptions {
+  /** The quest id, or the recap id when kind is 'recap'. */
   questId: string
   kind?: VoiceKind
   text: string
@@ -109,7 +110,7 @@ async function cachedAudio(questId: string, kind: VoiceKind): Promise<ArrayBuffe
   return hit ? hit.arrayBuffer() : null
 }
 
-/** Asks the server for this quest's audio. Only {quest_id, kind} is sent — never text. */
+/** Asks the server for this quest's (or recap's) audio. Only ids + kind are sent — never text. */
 async function fetchAudio(questId: string, kind: VoiceKind): Promise<ArrayBuffer | null> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), TTS_TIMEOUT_MS)
@@ -117,7 +118,7 @@ async function fetchAudio(questId: string, kind: VoiceKind): Promise<ArrayBuffer
     const res = await fetch(`${API_BASE_URL}/v1/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Device-Id': getDeviceId() },
-      body: JSON.stringify({ quest_id: questId, kind }),
+      body: JSON.stringify(kind === 'recap' ? { recap_id: questId, kind } : { quest_id: questId, kind }),
       signal: ctrl.signal,
     })
     if (!res.ok || !(res.headers.get('Content-Type') ?? '').startsWith('audio/')) return null

@@ -124,6 +124,23 @@ export interface RecentCompletion {
   screen_share: number | null
 }
 
+export interface RecapStats {
+  quests: number
+  minutes: number
+  top_category: Category | null
+}
+
+/** POST /v1/recap/weekly (MASTERSPEC §3.3, §7.7). `id` is null for an empty week. */
+export interface WeeklyRecap {
+  id: string | null
+  week_start: string
+  week_end: string
+  text: string
+  stats: RecapStats
+  source: 'llm' | 'fallback' | 'empty'
+  created_at: string | null
+}
+
 export interface Profile {
   persona: Persona
   interests: string[]

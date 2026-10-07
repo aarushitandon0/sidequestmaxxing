@@ -9,6 +9,11 @@ export function useProfile(enabled = true) {
   return useQuery({ queryKey: ['profile'], queryFn: api.profile, enabled, staleTime: 30_000 })
 }
 
+/** This week's Chronicle. Server-side idempotent, so refetching is a cheap read. */
+export function useWeeklyRecap(enabled = true) {
+  return useQuery({ queryKey: ['recap'], queryFn: api.weeklyRecap, enabled, staleTime: 60_000 })
+}
+
 /** Local-first preferences; the server copy is updated best-effort (it may be offline). */
 export function usePrefs(): [Prefs, (update: Partial<Prefs>) => Prefs] {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)

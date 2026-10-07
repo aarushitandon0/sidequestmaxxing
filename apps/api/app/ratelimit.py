@@ -10,6 +10,7 @@ GENERATE_LIMIT = "6/minute;30/day"
 COMPLETE_LIMIT = "10/minute"
 QUEST_ACTION_LIMIT = "30/minute"  # accept/skip: not in §6.5; generous anti-hammering only
 TTS_LIMIT = "20/hour"
+RECAP_LIMIT = "10/hour"  # not in §6.5; each miss is one LLM call, hits are cheap reads
 
 
 def device_or_ip(request: Request) -> str:

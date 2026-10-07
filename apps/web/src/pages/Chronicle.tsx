@@ -3,10 +3,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ART, CATEGORY_ART } from '../components/art'
+import { DmBubble } from '../components/DmBubble'
 import { friendlyError } from '../lib/api'
 import { SKILL_LABEL } from '../lib/labels'
 import type { RecentCompletion } from '../lib/types'
-import { useProfile } from '../state/hooks'
+import { usePrefs, useProfile, useWeeklyRecap } from '../state/hooks'
 
 const DAY = 86_400_000
 
@@ -16,9 +17,11 @@ function weekOf(items: RecentCompletion[], now = Date.now()) {
 
 const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
-/** This week's adventures from real completions (the written weekly story arrives with P18). */
+/** This week's adventures: the Chronicler's story (P18, server-validated) + the real completions. */
 export function Chronicle() {
   const profile = useProfile()
+  const recap = useWeeklyRecap()
+  const [prefs] = usePrefs()
   const [copied, setCopied] = useState(false)
   const [now] = useState(() => Date.now())
 
@@ -27,8 +30,10 @@ export function Chronicle() {
 
   const week = weekOf(profile.data.recent, now)
   const minutes = week.reduce((s, r) => s + r.minutes_outside, 0)
+  const story = recap.data && recap.data.source !== 'empty' && recap.data.id ? recap.data : null
   const text = [
     `My week of side quests (${fmt(new Date(now - 6 * DAY))} – ${fmt(new Date(now))}):`,
+    ...(story ? [story.text, ''] : []),
     ...week.map((r) => `• ${r.title ?? SKILL_LABEL[r.category]}${r.place_name ? ` at ${r.place_name}` : ''} — +${r.xp_awarded} XP, ${r.minutes_outside} min outside`),
     `${week.length} quests, ${minutes} minutes outside. #sidequestmaxxing`,
   ].join('\n')
@@ -65,6 +70,15 @@ export function Chronicle() {
           <p className="text-center text-ink-soft">
             {fmt(new Date(now - 6 * DAY))} – {fmt(new Date(now))}
           </p>
+          {story ? (
+            <div className="mt-5">
+              <DmBubble persona={prefs.persona} text={story.text} questId={story.id ?? undefined} kind="recap" />
+            </div>
+          ) : week.length > 0 && recap.isPending ? (
+            <p role="status" className="mt-4 text-center italic text-ink-soft">
+              The Chronicler is writing your week…
+            </p>
+          ) : null}
           {week.length === 0 ? (
             <div className="mt-8 text-center">
               <img src={ART.sceneMountains} alt="" className="mx-auto h-40 w-full max-w-md rounded-xl object-cover opacity-90" />

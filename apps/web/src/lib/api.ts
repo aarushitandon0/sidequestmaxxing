@@ -8,6 +8,7 @@ import type {
   QuestRequest,
   QuestState,
   SettingsUpdate,
+  WeeklyRecap,
 } from './types'
 
 export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -76,6 +77,7 @@ export const api = {
   updateSettings: (body: SettingsUpdate) =>
     request<Profile>('/v1/profile/settings', { method: 'PUT', body: JSON.stringify(body) }),
   deleteProfile: () => request<void>('/v1/profile', { method: 'DELETE' }),
+  weeklyRecap: () => post<WeeklyRecap>('/v1/recap/weekly'),
 } as const
 
 export function friendlyError(err: unknown): string {
