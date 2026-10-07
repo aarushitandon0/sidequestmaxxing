@@ -116,3 +116,14 @@ Sources that could not be reached from the build session are marked **(unverifie
 
 ## Build-environment notes (cloud session 2026-10-07)
 Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open-meteo.com` / `api.open-meteo.com`, `overpass-api.de`, `huggingface.co` (so the fastembed model can't be downloaded here — embedding tests use a fake embedder; `docker build` of the API must run on Render or locally). PyPI and npm are reachable.
+
+---
+
+## Session log
+
+### 2026-10-07 — Session 1 (P0–P5)
+- **Done:** P0 orientation + this log; P1 monorepo skeleton (API `/healthz`, PWA shell, llama.cpp service, `render.yaml`, `.env.example`, smoke test, `docs/DEPLOY.md`); P2 API foundation; P3 Atlas data layer + OSM seed + `/v1/places/near`; P4 validators V1–V12 + lint + fallback engine + 47-case red-team set; P5 Context Builder + Scout.
+- **Tests:** `apps/api`: 491 pytest passing, ruff + `mypy --strict` clean, validator/fallback coverage 99%. `apps/web`: vitest 2 passing, eslint + tsc clean, build OK (≈ 72 KB gzipped JS).
+- **Not verified here (blocked network):** real Overpass seed, fastembed model download, Atlas index creation, Open-Meteo live call, llama.cpp image pull, Render Blueprint validation. All have documented commands in `docs/DEPLOY.md`.
+- **Needs the user:** DevRelay install + MLH sign-in (local machine); demo city + bbox (OQ-C3); deadline/rules (OQ-C1); account access for Render/Atlas/Tinker/ElevenLabs/Sentry (gate G0); approval for the spec ambiguities A1–A3.
+- **Next:** P6 — prompts + Quest Master client + `bench_llm.py` (gate G1).
