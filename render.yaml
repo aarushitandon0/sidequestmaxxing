@@ -1,0 +1,85 @@
+# Render Blueprint — MASTERSPEC §12.2. Field names checked 2026-10-07 against Render's
+# official blueprint skill (render-oss/skills). Validate with: render blueprints validate
+# Plan values are the spec's starting point; change only after gate G1 and after asking.
+services:
+  - type: web
+    name: sqm-web
+    runtime: static
+    buildCommand: cd apps/web && npm ci && npm run build
+    staticPublishPath: ./apps/web/dist
+    headers:
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(self), geolocation=(self), microphone=()
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://sqm-api.onrender.com  # replace with the real URL after first deploy
+      - key: VITE_SENTRY_DSN
+        sync: false
+      - key: VITE_GEMMA_MODEL_URL
+        sync: false
+
+  - type: web
+    name: sqm-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /healthz
+    envVars:
+      - key: ENV
+        value: production
+      - key: WEB_ORIGIN
+        value: https://sqm-web.onrender.com  # replace with the real URL after first deploy
+      - key: LLM_HOSTPORT
+        fromService:
+          type: pserv
+          name: sqm-llm
+          property: hostport
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: sqm
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: TTS_DAILY_CHAR_BUDGET
+        value: "20000"
+      - key: FALLBACK_ON_LLM_ERROR
+        value: "true"
+
+  - type: pserv
+    name: sqm-llm
+    runtime: docker
+    dockerfilePath: ./services/llm/Dockerfile
+    dockerContext: ./services/llm
+    plan: standard  # CHANGE after gate G1 (RAM must fit model + 1 GB headroom)
+    disk:
+      name: models
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: MODEL_URL
+        sync: false
+      - key: MODEL_SHA256
+        sync: false
+      - key: MODEL_FILE
+        value: quest.gguf
+      - key: CTX_SIZE
+        value: "2048"

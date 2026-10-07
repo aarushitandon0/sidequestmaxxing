@@ -16,3 +16,4 @@ dist/
 data/overpass_*.json
 !data/overpass_sample.json
 *.tsbuildinfo
+dev-dist/
