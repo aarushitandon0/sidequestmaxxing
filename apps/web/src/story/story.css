@@ -31,13 +31,8 @@
 }
 
 /* 1. Hero */
-.hero-sky {
-  background: linear-gradient(180deg, #a4ccec 0%, #cfe3ee 38%, #f6ecd6 78%, var(--color-page) 100%);
-}
 .hero-art {
-  transform: translateY(calc(var(--progress) * -24px));
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18%);
-  mask-image: linear-gradient(180deg, transparent 0, #000 18%);
+  box-shadow: 0 24px 48px rgb(21 26 22 / 0.35);
 }
 
 /* 2. The problem */

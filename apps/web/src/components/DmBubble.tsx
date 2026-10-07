@@ -15,13 +15,15 @@ interface Props {
   listenable?: boolean
   dark?: boolean
   size?: 'md' | 'lg'
+  /** Hide the small portrait when a big one is shown next to the bubble. */
+  hidePortrait?: boolean
 }
 
 /** The Dungeon Master speaking: portrait + parchment speech bubble + Listen + waveform. */
-export function DmBubble({ persona, text, speech, listenable = true, dark = false, size = 'md' }: Props) {
+export function DmBubble({ persona, text, speech, listenable = true, dark = false, size = 'md', hidePortrait = false }: Props) {
   const [playing, setPlaying] = useState(false)
   useEffect(() => () => stopSpeaking(), [])
-  const portrait = size === 'lg' ? 'h-24 w-24' : 'h-16 w-16'
+  const portrait = size === 'lg' ? 'h-20 w-20 sm:h-24 sm:w-24' : 'h-16 w-16'
 
   const toggle = () => {
     if (playing) {
@@ -34,6 +36,7 @@ export function DmBubble({ persona, text, speech, listenable = true, dark = fals
 
   return (
     <div className="flex items-end gap-3">
+      {hidePortrait ? null : (
       <img
         src={PORTRAIT[persona]}
         alt={`${PERSONA_INFO[persona].name} Dungeon Master`}
@@ -41,7 +44,8 @@ export function DmBubble({ persona, text, speech, listenable = true, dark = fals
         width={96}
         height={96}
       />
-      <div className={`bubble ${dark ? 'bubble-dark' : ''} flex-1`}>
+      )}
+      <div className={`bubble ${dark ? 'bubble-dark' : ''} min-w-0 flex-1`}>
         <p className="text-[1.05rem] leading-snug">{text}</p>
         {listenable && canSpeak() ? (
           <div className="mt-1 flex items-center gap-3 text-moss">
@@ -54,7 +58,7 @@ export function DmBubble({ persona, text, speech, listenable = true, dark = fals
             >
               {playing ? <StopIcon /> : <PlayIcon />}
             </button>
-            <Waveform active={playing} />
+            <Waveform active={playing} className="min-w-0 overflow-hidden" />
           </div>
         ) : null}
       </div>

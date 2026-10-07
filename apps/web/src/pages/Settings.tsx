@@ -25,17 +25,19 @@ export function Settings() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5">
-      <h1 className="hand-title text-4xl">Settings</h1>
+    <div className="flex flex-col gap-5">
+      <h1 className="sign-title self-start text-3xl">Settings</h1>
 
-      <section aria-labelledby="s-dm" className="parchment p-4">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+      <div className="flex flex-col gap-5 lg:gap-6">
+      <section aria-labelledby="s-dm" className="parchment p-4 sm:p-5">
         <h2 id="s-dm" className="text-2xl">Your Dungeon Master</h2>
         <div className="mt-3">
-          <PersonaPicker value={prefs.persona} onChange={(p) => update({ persona: p })} />
+          <PersonaPicker value={prefs.persona} onChange={(p) => update({ persona: p })} compact />
         </div>
       </section>
 
-      <section aria-labelledby="s-int" className="parchment p-4">
+      <section aria-labelledby="s-int" className="parchment p-4 sm:p-5">
         <h2 id="s-int" className="text-2xl">Interests & range</h2>
         <div className="mt-2 flex flex-wrap gap-2">
           {INTEREST_OPTIONS.map((i) => (
@@ -57,14 +59,17 @@ export function Settings() {
         </label>
       </section>
 
-      <section aria-labelledby="s-ver" className="parchment p-4">
+      </div>
+
+      <div className="flex flex-col gap-5 lg:gap-6">
+      <section aria-labelledby="s-ver" className="parchment p-4 sm:p-5">
         <h2 id="s-ver" className="text-2xl">Photo checks</h2>
         <div className="mt-2">
           <VerifierInstall />
         </div>
       </section>
 
-      <section aria-labelledby="s-priv" className="parchment p-4">
+      <section aria-labelledby="s-priv" className="parchment p-4 sm:p-5">
         <h2 id="s-priv" className="text-2xl">Privacy & safety</h2>
         <ul className="mt-2 list-disc space-y-1 pl-6">
           <li>Photos and exact movements stay on your device; the server sees an approximate area to find nearby places.</li>
@@ -93,6 +98,8 @@ export function Settings() {
           </button>
         )}
       </section>
+      </div>
+      </div>
     </div>
   )
 }

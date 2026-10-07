@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 
 import { PORTRAIT } from './art'
 import { BookIcon, GearIcon, HomeIcon, MapIcon, StarIcon, WifiOffIcon } from './Icons'
+import { World } from './World'
 import { XpBar } from './XpBar'
 import { useOnline, useProfile } from '../state/hooks'
 import { loadPrefs } from '../lib/prefs'
@@ -33,73 +34,76 @@ export function OfflineBanner() {
   )
 }
 
-/** "Lv. 3 Explorer" card (design template, top right). */
-export function LevelCard() {
+/** Compact HUD chip for the top bar: portrait, level, XP bar, streak. */
+export function HudLevel() {
   const profile = useProfile()
   const persona = loadPrefs().persona
-  if (!profile.data) return null
   const p = profile.data
-  const prev = 120 * p.level * p.level
+  const prev = p ? 120 * p.level * p.level : 0
   return (
-    <div className="parchment flex items-center gap-3 px-3 py-2">
-      <img src={PORTRAIT[persona]} alt="" className="h-12 w-12 rounded-full border-2 border-edge object-cover" />
-      <div className="min-w-36">
-        <p className="leading-none">
-          Lv. {p.level} Explorer
-          {p.streak_days > 0 ? <span className="ml-2 text-ink-soft">· {p.streak_days}-day streak</span> : null}
-        </p>
-        <div className="mt-1.5">
-          <XpBar value={p.total_xp - prev} max={p.next_level_xp - prev} label="Overall level progress" />
-        </div>
-        <p className="mt-0.5 text-right text-sm text-ink-soft">
-          {p.total_xp} / {p.next_level_xp} XP
-        </p>
-      </div>
-    </div>
+    <Link to="/profile" className="flex min-h-11 items-center gap-2 rounded-full bg-forest-deep/60 py-1 pr-4 pl-1 text-parchment-light no-underline hover:bg-forest-deep/80">
+      <img src={PORTRAIT[persona]} alt="" className="h-10 w-10 rounded-full border-2 border-gold-light object-cover" />
+      {p ? (
+        <span className="flex flex-col leading-none">
+          <span className="text-base">
+            Lv. {p.level}
+            {p.streak_days > 0 ? <span className="ml-1.5 text-gold-light">· {p.streak_days}d streak</span> : null}
+          </span>
+          <span className="mt-1 hidden w-28 sm:block">
+            <XpBar value={p.total_xp - prev} max={p.next_level_xp - prev} label="Level progress" />
+          </span>
+        </span>
+      ) : (
+        <span className="text-base">Explorer</span>
+      )}
+    </Link>
   )
 }
 
-/** App frame: wooden sidebar on wide screens, bottom tab bar on phones (≥ 44 px targets). */
-export function AppShell({ children }: { children: ReactNode }) {
+/**
+ * App frame: the illustrated world fills the window; a floating HUD bar (logo, nav, level)
+ * sits on top on wide screens, a bottom tab bar on phones (≥ 44 px targets). Pages lay out
+ * in wide multi-column grids over the scenery instead of one narrow column.
+ */
+export function AppShell({ children, tone = 'day' }: { children: ReactNode; tone?: 'day' | 'dusk' }) {
   return (
-    <div className="min-h-dvh md:flex">
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:bg-parchment focus:p-2">
-        Skip to content
-      </a>
-      <nav
-        aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-[1100] border-t-4 border-wood-dark bg-forest md:sticky md:top-0 md:h-dvh md:w-28 md:border-t-0 md:border-r-4"
-      >
-        <div className="hidden px-2 pt-4 pb-6 text-center md:block">
-          <Link to="/" className="logo-text block text-base leading-tight" aria-label="Sidequestmaxxing story">
-            Side
-            <br />
-            quest
-            <br />
-            maxxing
-          </Link>
-        </div>
-        <ul className="flex justify-around md:flex-col md:gap-2 md:px-2">
-          {NAV.map(({ to, label, Icon }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                className={({ isActive }) =>
-                  `flex min-h-14 min-w-14 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1 text-sm no-underline md:py-3 ${
-                    isActive ? 'bg-parchment text-ink shadow-md' : 'text-parchment-deep hover:bg-forest-soft'
-                  }`
-                }
-              >
-                <Icon className="text-2xl" />
-                {label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <div className="flex-1 pb-24 md:pb-0">
+    <div className="relative min-h-dvh">
+      <World tone={tone} className="fixed inset-0 z-0 h-full w-full" />
+      <div className="relative z-10 flex min-h-dvh flex-col">
+        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:bg-parchment focus:p-2">
+          Skip to content
+        </a>
+        <header className="sticky top-0 z-[1100] px-3 pt-3 lg:px-6">
+          <div className="hud-bar mx-auto flex max-w-[1400px] items-center gap-3 px-3 py-2 lg:px-4">
+            <Link to="/" className="logo-text shrink-0 text-xl no-underline xl:text-2xl" aria-label="Sidequestmaxxing story">
+              Sidequestmaxxing
+            </Link>
+            <nav aria-label="Main" className="fixed inset-x-0 bottom-0 border-t-4 border-wood-dark bg-forest lg:static lg:flex-1 lg:border-0 lg:bg-transparent">
+              <ul className="flex justify-around lg:justify-center lg:gap-1">
+                {NAV.map(({ to, label, Icon }) => (
+                  <li key={to}>
+                    <NavLink
+                      to={to}
+                      className={({ isActive }) =>
+                        `flex min-h-14 min-w-12 flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-1 text-[0.8rem] no-underline sm:min-w-14 sm:px-2 sm:text-sm lg:min-h-11 lg:flex-row lg:gap-1.5 lg:px-3 lg:text-base xl:gap-2 xl:px-4 xl:text-lg ${
+                          isActive ? 'bg-parchment text-ink shadow-md' : 'text-parchment-deep hover:bg-forest-soft'
+                        }`
+                      }
+                    >
+                      <Icon className="text-2xl lg:text-xl" />
+                      {label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <div className="ml-auto lg:ml-0">
+              <HudLevel />
+            </div>
+          </div>
+        </header>
         <OfflineBanner />
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl px-4 py-5 md:px-8 md:py-8">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-4 pt-5 pb-28 lg:px-6 lg:pt-6 lg:pb-10">
           {children}
         </main>
       </div>

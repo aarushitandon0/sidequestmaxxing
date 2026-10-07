@@ -44,7 +44,7 @@ export function Walk() {
       <img src={ART.sceneForest} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25" />
       <div className="absolute inset-0 bg-gradient-to-b from-forest-deep/70 via-forest-deep/40 to-forest-deep/95" aria-hidden="true" />
 
-      <header className="relative flex items-start justify-between gap-3 p-5">
+      <header className="relative mx-auto flex w-full max-w-3xl items-start justify-between gap-3 p-5 lg:pt-10">
         <div>
           <h1 className="text-3xl">Walk Mode</h1>
           <p className="max-w-xs text-parchment-deep">Your quest is live. Keep your phone in your pocket and explore.</p>
@@ -61,14 +61,14 @@ export function Walk() {
 
       <section className="relative flex flex-1 flex-col items-center justify-center px-6 text-center" aria-label="Quest timer">
         <p className="text-parchment-deep">{quest.title}</p>
-        <p className="mt-2 font-[family-name:var(--font-logo)] text-7xl tabular-nums" aria-live="off">
+        <p className="mt-2 font-[family-name:var(--font-logo)] text-7xl tabular-nums lg:text-9xl" aria-live="off">
           <span className="sr-only">Time outside: </span>
           {formatClock(elapsed)}
         </p>
         <p className="mt-3 max-w-sm text-lg text-parchment-deep">{quest.objective}</p>
       </section>
 
-      <section className="relative p-5">
+      <section className="relative mx-auto w-full max-w-2xl p-5 lg:pb-10">
         <div className="flex items-end gap-3">
           <img src={PORTRAIT[prefs.persona]} alt="" className="h-14 w-14 rounded-full border-2 border-parchment-deep object-cover" />
           <p className="bubble bubble-dark flex-1">{quest.off_screen_tip}</p>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-import { PORTRAIT } from '../components/art'
+import { CATEGORY_ART, PORTRAIT } from '../components/art'
 import { Medallion } from '../components/Medallion'
 import { XpBar } from '../components/XpBar'
 import { friendlyError } from '../lib/api'
@@ -28,8 +28,9 @@ export function Profile() {
   const prev = 120 * p.level * p.level
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
-      <aside className="dark-panel flex flex-col gap-3 p-4" aria-label="Explorer">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[360px_1fr] lg:gap-6">
+      <div className="flex flex-col gap-5 lg:gap-6">
+      <aside className="dark-panel flex flex-col gap-3 p-5" aria-label="Explorer">
         <div className="flex items-center gap-3">
           <img src={PORTRAIT[prefs.persona]} alt="" className="h-16 w-16 rounded-full border-2 border-parchment-deep object-cover" />
           <div>
@@ -56,27 +57,54 @@ export function Profile() {
         </Link>
       </aside>
 
-      <section aria-labelledby="tree-title" className="parchment p-4 sm:p-6">
-        <h2 id="tree-title" className="hand-title text-center text-3xl">
+      <section aria-labelledby="recent-title" className="parchment p-4">
+        <h2 id="recent-title" className="hand-title text-2xl">
+          Recent adventures
+        </h2>
+        {p.recent.length === 0 ? (
+          <p className="mt-2 text-ink-soft">Nothing yet. Your first quest is one tap away.</p>
+        ) : (
+          <ol className="mt-2 divide-y divide-edge/50">
+            {p.recent.slice(0, 6).map((r) => (
+              <li key={r.quest_id} className="flex items-center gap-3 py-2">
+                <img src={CATEGORY_ART[r.category]} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                <div className="min-w-0">
+                  <p className="truncate text-lg leading-tight">{r.title ?? 'A side quest'}</p>
+                  <p className="text-sm text-ink-soft">
+                    +{r.xp_awarded} XP · {SKILL_LABEL[r.category]}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+        <Link to="/home" className="btn btn-wood mt-3 w-full">
+          Find a new quest
+        </Link>
+      </section>
+      </div>
+
+      <section aria-labelledby="tree-title" className="parchment flex flex-col p-4 sm:p-8">
+        <h2 id="tree-title" className="hand-title text-center text-4xl">
           Skill Tree
         </h2>
         <p className="text-center text-ink-soft">Grow your skills. Unlock new quests.</p>
-        <div className="relative mt-4">
+        <div className="relative mt-6 flex-1">
           <svg aria-hidden="true" viewBox="0 0 400 300" className="pointer-events-none absolute inset-0 h-full w-full opacity-30">
             <path d="M200 300 C200 230 200 200 200 150 M200 200 C160 170 110 160 80 120 M200 200 C240 170 290 160 320 120 M200 150 C180 110 160 80 140 40 M200 150 C220 110 240 80 260 40"
               stroke="#8a6a3c" strokeWidth="14" fill="none" strokeLinecap="round" />
           </svg>
-          <ul className="relative grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-4">
+          <ul className="relative grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 lg:gap-y-12">
             {CATEGORIES.map((c) => {
               const s = p.skills[c]
               const floor = 40 * s.level * s.level
               return (
                 <li key={c} className="flex flex-col items-center text-center">
-                  <Medallion category={c} size={68} dim={s.xp === 0} />
-                  <p className="mt-1 text-lg leading-tight">{SKILL_LABEL[c]}</p>
+                  <Medallion category={c} size={84} dim={s.xp === 0} />
+                  <p className="mt-2 text-xl leading-tight">{SKILL_LABEL[c]}</p>
                   <p className="text-ink-soft">Lv. {s.level}</p>
                   {s.title ? <p className="text-sm text-moss">“{s.title}”</p> : null}
-                  <div className="mt-1 w-24">
+                  <div className="mt-1 w-28">
                     <XpBar value={s.xp - floor} max={s.next_level_xp - floor} label={`${SKILL_LABEL[c]} progress`} />
                   </div>
                   <p className="text-xs text-ink-soft">({CATEGORY_LABEL[c]})</p>
