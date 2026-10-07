@@ -1,0 +1,44 @@
+[
+  {
+    "input": {
+      "context": {"local_time": "2026-04-11T15:20:00+05:30", "part_of_day": "afternoon", "weekday": "Saturday", "sunrise": "2026-04-11T06:14:00+05:30", "sunset": "2026-04-11T18:46:00+05:30", "daylight_minutes_left": 206, "weather": {"summary": "partly cloudy", "temp_c": 31.0, "precip_prob": 10, "code": null, "thunderstorm": false}, "indoor_only": false, "indoor_reasons": []},
+      "persona": "nature_nerd",
+      "mood": "curious",
+      "interests": ["birds", "trees"],
+      "minutes_available": 45,
+      "recent_categories": ["fitness"],
+      "candidates": [
+        {"id": "way/2001", "name": "Kamala Garden", "kind": "garden", "distance_m": 620, "tags_summary": "leisure=garden", "indoor": false, "needs_daylight": true, "lat": 18.52, "lng": 73.85, "score": 0.81},
+        {"id": "node/2002", "name": "Lantern Cafe", "kind": "cafe", "distance_m": 410, "tags_summary": "amenity=cafe", "indoor": true, "needs_daylight": false, "lat": 18.52, "lng": 73.86, "score": 0.62}
+      ]
+    },
+    "output": {"title": "The Three-Bark Survey", "category": "naturalist", "briefing": "Oh, you are in for a treat. Kamala Garden hides at least three kinds of tree bark, from paper-smooth to deeply cracked. Walk the garden paths slowly, run a fingertip over each, and listen for which branches the birds prefer.", "objective": "Find three trees in Kamala Garden with clearly different bark.", "place_id": "way/2001", "est_minutes": 35, "verification": {"method": "photo", "photo_prompt": "close-up of tree bark with a deep crack pattern"}, "safety_note": "Stay on the garden paths and carry water in the afternoon heat.", "off_screen_tip": "Pocket the phone until bark number three."}
+  },
+  {
+    "input": {
+      "context": {"local_time": "2026-07-02T17:40:00+05:30", "part_of_day": "evening", "weekday": "Thursday", "sunrise": "2026-07-02T06:02:00+05:30", "sunset": "2026-07-02T19:12:00+05:30", "daylight_minutes_left": 92, "weather": {"summary": "rain", "temp_c": 24.0, "precip_prob": 85, "code": null, "thunderstorm": false}, "indoor_only": true, "indoor_reasons": ["rain likely"]},
+      "persona": "dramatic",
+      "mood": "calm",
+      "interests": ["history"],
+      "minutes_available": 60,
+      "recent_categories": ["naturalist", "explorer"],
+      "candidates": [
+        {"id": "way/3101", "name": "City Heritage Museum", "kind": "museum", "distance_m": 900, "tags_summary": "tourism=museum", "indoor": true, "needs_daylight": false, "lat": 18.51, "lng": 73.85, "score": 0.77},
+        {"id": "node/3102", "name": "Riverside Park", "kind": "park", "distance_m": 500, "tags_summary": "leisure=park", "indoor": false, "needs_daylight": true, "lat": 18.52, "lng": 73.85, "score": 0.74}
+      ]
+    },
+    "output": {"title": "The Keeper of Forgotten Things", "category": "creative", "briefing": "Hear me, traveller! The skies weep, so we seek shelter among relics. Within the City Heritage Museum waits one object whose story no one remembers. Choose it, study it, and in your mind write the legend it deserves.", "objective": "Pick one exhibit in the City Heritage Museum and invent a three-line legend for it.", "place_id": "way/3101", "est_minutes": 50, "verification": {"method": "checkin", "photo_prompt": null}, "safety_note": "Carry an umbrella and check the museum's opening hours before you go.", "off_screen_tip": "Keep the legend in your head, not your notes app."}
+  },
+  {
+    "input": {
+      "context": {"local_time": "2026-05-20T12:10:00+05:30", "part_of_day": "afternoon", "weekday": "Wednesday", "sunrise": "2026-05-20T06:00:00+05:30", "sunset": "2026-05-20T19:02:00+05:30", "daylight_minutes_left": 412, "weather": {"summary": "hot and sunny", "temp_c": 39.0, "precip_prob": 0, "code": null, "thunderstorm": false}, "indoor_only": true, "indoor_reasons": ["extreme heat"]},
+      "persona": "sarcastic",
+      "mood": "tired",
+      "interests": [],
+      "minutes_available": 20,
+      "recent_categories": ["creative"],
+      "candidates": []
+    },
+    "output": {"title": "Window of Opportunity", "category": "mindful", "briefing": "It is far too hot to be heroic, so here is a quest you can do without moving much. Find the nearest window, look outside for five full minutes, and count every shade of green you can spot. Yes, the phone can survive without you.", "objective": "Look out of a window for five minutes and count the shades of green.", "place_id": null, "est_minutes": 10, "verification": {"method": "honor", "photo_prompt": null}, "safety_note": "Stay indoors in the shade and drink some water while the heat lasts.", "off_screen_tip": "Phone face down in another room."}
+  }
+]

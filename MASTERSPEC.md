@@ -396,7 +396,7 @@ Same fine-tuned model (multi-task SFT: ~85% quest, ~15% recap). **System prompt*
 A small open model that, *without* needing a giant prompt, reliably emits valid, grounded, safe, varied, voice-consistent quests — and runs on a CPU instance.
 
 ### 10.2 Model selection (decision gate G1)
-Candidates (must appear in Tinker's current "Models & Pricing" list **[VERIFY]**): `Qwen3-4B-Instruct-2507` or the closest small Qwen3 instruct; fallback `Qwen3-1.7B` / `Llama-3.2-3B`. Choose the largest that meets: Q4_K_M GGUF file + KV cache + runtime ≤ (instance RAM − 1 GB), and p50 generation latency ≤ 15 s on the chosen Render plan. Prefer Apache-2.0 licensed models. Disable "thinking" mode (use an instruct variant or template flag).
+Candidates (must appear in Tinker's current "Models & Pricing" list): ~~`Qwen3-4B-Instruct-2507`, `Qwen3-1.7B`, `Llama-3.2-3B`~~ are no longer in the lineup (DECISIONS D-55); smallest available is `Qwen3.5-4B`, then `Qwen3-8B` / `Qwen3.5-9B`. Choose the largest that meets: Q4_K_M GGUF file + KV cache + runtime ≤ (instance RAM − 1 GB), and p50 generation latency ≤ 15 s on the chosen Render plan. Prefer Apache-2.0 licensed models. Disable "thinking" mode (use an instruct variant or template flag).
 Gemma is **not** the fine-tune target (Tinker lists Qwen/Llama families **[VERIFY]**); Gemma is used on-device for vision.
 
 ### 10.3 Data (synthetic, programmatic, validator-filtered)

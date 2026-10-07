@@ -38,6 +38,10 @@ python scripts/create_indexes.py            # collections + Atlas vector indexes
 python scripts/seed_places.py --bbox "<S,W,N,E>" --city "<name>"
 bash scripts/smoke_test.sh                  # hits healthz + generate against API_BASE_URL
 python scripts/bench_llm.py --base-url http://localhost:8080 --n 20   # gate G1 latency → evals/
+
+# Training (repo root, API venv; see training/README.md)
+python -m pytest -q training/tests        # pipeline tests, free backends
+python training/make_contexts.py --synthetic --scale 0.05   # dry run, no Atlas
 ```
 
 ## Working agreement

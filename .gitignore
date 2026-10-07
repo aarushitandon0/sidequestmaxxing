@@ -20,3 +20,7 @@ dev-dist/
 dist-e2e/
 test-results/
 playwright-report/
+
+# Training artefacts (generated; never committed)
+training/data/
+models/
