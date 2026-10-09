@@ -153,7 +153,7 @@ function Hero() {
           </p>
           <p className="mx-auto mt-4 max-w-xl rounded-2xl bg-parchment-light/85 px-4 py-3 text-lg text-ink-soft lg:mx-0">
             Your neighbourhood is full of side quests… you just need a reason to explore. Side quest maxxing means chasing
-            fun, unexpected, secondary goals outside your routine — to build skills, break monotony, and spark joy.
+            fun, unexpected, secondary goals outside your routine, to build skills, break monotony, and spark joy.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
             <StartLink className="py-4 text-2xl" />
@@ -198,7 +198,7 @@ function Problem() {
           </h2>
           <p className="mt-3 text-xl">
             This week's challenge rule shaped everything: <strong>the screen must be the shortest part</strong> of the
-            experience. So Sidequestmaxxing is designed backwards — minimum screen, maximum time outside.
+            experience. So Sidequestmaxxing is designed backwards: minimum screen, maximum time outside.
           </p>
           <div className="mt-5">
             <p className="flex items-center gap-2 text-lg">
@@ -236,7 +236,7 @@ function DungeonMaster() {
   return (
     <Scene id="dm" label="Scene 3 of 9">
       <h2 id="dm-title" className="hand-title text-center text-4xl">
-        Your Dungeon Master writes one quest — for a real place near you.
+        Your Dungeon Master writes one quest for a real place near you.
       </h2>
       <p className="mx-auto mt-2 max-w-2xl text-center text-lg text-ink-soft">
         An open-weight model picks from real nearby places and writes a short, safe, spoken briefing. Example quest:
@@ -332,7 +332,7 @@ function VerifiedScene() {
             Verified on your device.
           </h2>
           <p className="mt-3 text-xl">
-            Take one photo. An open Gemma model running in your browser checks it — and the photo never leaves your phone.
+            Take one photo. An open Gemma model running in your browser checks it, and the photo never leaves your phone.
             There is no upload endpoint at all.
           </p>
           <p className="mt-3 rounded-xl border-2 border-edge bg-parchment-light p-3 text-lg">
@@ -360,7 +360,7 @@ function SkillScene() {
         Grow seven skills by living them.
       </h2>
       <p className="text-center text-lg text-ink-soft">
-        XP, levels and rarity are computed by the server — never by the model. (Levels shown are an example.)
+        XP, levels and rarity are computed by the server, never by the model. (Levels shown are an example.)
       </p>
       <ul className="parchment mx-auto mt-6 grid max-w-3xl grid-cols-2 gap-5 p-6 sm:grid-cols-4">
         {CATEGORIES.map((c, i) => (
@@ -388,7 +388,7 @@ export function Receipts({ data }: { data: StoryData }) {
         <div className="parchment mx-auto mt-5 max-w-3xl overflow-x-auto p-4">
           <table className="w-full text-left text-lg">
             <caption className="pb-2 text-ink-soft">
-              Baseline vs fine-tuned{data.results.n != null ? ` (n=${data.results.n} held-out contexts)` : ''} — source:{' '}
+              Baseline vs fine-tuned{data.results.n != null ? ` (n=${data.results.n} held-out contexts)` : ''}. Source:{' '}
               {data.results.source}
             </caption>
             <thead>
@@ -459,7 +459,7 @@ function OpenClosed() {
           <h3 className="flex items-center gap-2 text-2xl text-moss"><LeafIcon /> Open</h3>
           <ul className="mt-2 space-y-2">
             {OPEN.map(([name, why]) => (
-              <li key={name}><strong>{name}</strong> — {why}</li>
+              <li key={name}><strong>{name}</strong>: {why}</li>
             ))}
           </ul>
         </div>
@@ -467,7 +467,7 @@ function OpenClosed() {
           <h3 className="flex items-center gap-2 text-2xl text-wood"><CompassIcon /> Hosted / closed</h3>
           <ul className="mt-2 space-y-2">
             {HOSTED.map(([name, why]) => (
-              <li key={name}><strong>{name}</strong> — {why}</li>
+              <li key={name}><strong>{name}</strong>: {why}</li>
             ))}
           </ul>
         </div>
@@ -534,7 +534,7 @@ function TryIt() {
           Map data © <a className="underline" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
           Weather by <a className="underline" href="https://open-meteo.com/">Open-Meteo</a>. Photo checks: Gemma 3n under the
           Gemma Terms of Use. Fonts: Patrick Hand and Lilita One (SIL Open Font License). Not an emergency or navigation
-          tool — tell someone where you're going.
+          tool. Tell someone where you're going.
         </p>
       </footer>
     </Scene>
