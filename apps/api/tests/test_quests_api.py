@@ -266,3 +266,46 @@ def test_skip_completed_quest_is_409() -> None:
     qid = make_quest(h)
     h.db["quests"].docs[0]["status"] = "completed"
     assert h.post(f"/v1/quests/{qid}/skip").status_code == 409
+
+
+def test_no_user_coordinates_reach_any_collection() -> None:
+    """P20 privacy sweep (§9.3): the request carries lat/lng; no collection may keep them.
+
+    The single-document version of this check above only covers `quests`. This one walks every
+    collection the fake DB has after a full generate → accept → complete run, so a new write
+    path cannot quietly start storing a position.
+    """
+    llm, _ = mock_llm(json.dumps(LLM_QUEST))
+    h = Harness(llm)
+    quest_id = make_quest(h)
+    h.post(f"/v1/quests/{quest_id}/accept")
+    h.now = NOW + timedelta(minutes=30)  # the server times the quest itself; let it elapse
+    done = h.post(
+        f"/v1/quests/{quest_id}/complete",
+        {
+            "verification": {"method": "checkin"},
+            "checkin": {"lat": 18.52049, "lng": 73.85612},
+            "elapsed_seconds": 1500,
+            "screen_seconds": 120,
+            "note": "lovely walk",
+        },
+    )
+    assert done.status_code == 200, done.text
+
+    # `places` is seeded public OSM data, so it is not part of this check; everything the
+    # player's own requests touched is. Place coordinates may legitimately be stored and
+    # returned (they are public), which is why this asserts on the *player's* position only.
+    written = {name: col.docs for name, col in h.db.collections.items() if name != "places"}
+    stored = json.dumps(written, default=str)
+    for forbidden in ("18.52049", "73.85612"):  # exactly what the client sent, twice over
+        assert forbidden not in stored, f"{forbidden} reached storage"
+
+    # What is kept instead of a position: a boolean and the place id.
+    [completion] = h.db["completions"].docs
+    assert completion["within_radius"] is True
+    assert completion["place_id"] == "p/park1"
+    assert "lat" not in completion and "lng" not in completion
+    # The check-in position is scored into `within_radius` and dropped; only the method name
+    # ("checkin") is kept, which is not a position.
+    assert "checkin" not in completion
+    assert set(completion["verification"]) == {"method", "match", "confidence", "seen"}

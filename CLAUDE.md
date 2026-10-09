@@ -15,9 +15,9 @@ apps/api/        FastAPI service (Python 3.12)
 services/llm/    llama.cpp server Dockerfile + entrypoint (Render private service)
 prompts/         ONE source of truth for prompts (used by api, web, training)
 training/        Tinker data gen, filters, SFT, eval harness, export notes
-scripts/         seed_places.py, create_indexes.py, smoke_test.sh
+scripts/         seed_places.py, create_indexes.py, smoke_test.sh, scan_secrets.py
 evals/           generated results (never hand-edit numbers)
-docs/            DECISIONS.md, DEVRELAY.md, CLAUDE_CODE_PROMPTS.md
+docs/            DECISIONS.md, DEVRELAY.md, CLAUDE_CODE_PROMPTS.md, SECURITY.md, TRACES.md
 render.yaml      Render Blueprint (web + api + llm)
 ```
 
@@ -38,6 +38,8 @@ python scripts/create_indexes.py            # collections + Atlas vector indexes
 python scripts/seed_places.py --bbox "<S,W,N,E>" --city "<name>"
 bash scripts/smoke_test.sh                  # hits healthz + generate against API_BASE_URL
 python scripts/bench_llm.py --base-url http://localhost:8080 --n 20   # gate G1 latency → evals/
+python scripts/scan_secrets.py              # secret scan: tracked files + every commit
+python scripts/scan_secrets.py --tree       # working tree only (fast)
 
 # Training (repo root, API venv; see training/README.md)
 python -m pytest -q training/tests        # pipeline tests, free backends
