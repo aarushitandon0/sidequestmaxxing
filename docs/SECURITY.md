@@ -1,6 +1,6 @@
 # Security, safety and privacy review (P20)
 
-Reviewed 2026-10-09 against MASTERSPEC §9.1–§9.4 and §14.1. Every row says what was checked, the
+Reviewed 2026-10-09 and closed out 2026-10-10 against MASTERSPEC §9.1–§9.4 and §14.1. Every row says what was checked, the
 evidence, and the status. Numbers and command output in here were produced by running the
 commands shown — nothing is estimated.
 
@@ -11,6 +11,7 @@ cd apps/api && pytest -q                       # includes the 104-case red-team
 python scripts/scan_secrets.py                 # working tree + full git history
 cd apps/api && python -m pip_audit -r requirements.txt -r requirements-dev.txt
 cd apps/web && npm audit && npm run build      # then scan dist/ (see "No keys in the bundle")
+cd apps/web && npm run check:csp               # the render.yaml CSP against the real dist/ in Chromium
 ```
 
 ## 1. Safety red-team (§14.1)
@@ -78,45 +79,67 @@ never on name — so sanitizing a name cannot break a quest's link to a real pla
 | Scanner is not vacuous | 5 planted keys (AWS, GitHub PAT, Mongo SRV with password, ElevenLabs, assigned secret) all detected; the 2 `<placeholder>` forms correctly ignored | PASS |
 | No keys in the built bundle | `npm run build`, then the same patterns over 22 text files in `dist/` → 0 findings; `MONGODB_URI`, `ELEVENLABS_API_KEY`, `SENTRY_AUTH` appear nowhere in `dist/` | PASS |
 | `.env` not committed, `.env.example` current | `git ls-files` lists only `.env.example`; `.gitignore` has `.env`, `.env.*`, `!.env.example` | PASS |
-| Static-site headers | `render.yaml`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(self), geolocation=(self), microphone=()`, `Cache-Control: no-cache` on `/sw.js` | PARTIAL |
-| Content-Security-Policy | Not set | **OPEN — needs a decision** |
-| Clickjacking (`X-Frame-Options` / `frame-ancestors`) | Not set | **OPEN — needs a decision** |
-| `/docs`, `/redoc`, `/openapi.json` in production | Served unconditionally from `create_app` | **OPEN — needs a decision** |
+| Static-site headers | `render.yaml`: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(self), geolocation=(self), microphone=()`, `Cache-Control: no-cache` on `/sw.js`, plus the CSP and `X-Frame-Options` below | PASS |
+| Content-Security-Policy | Set in `render.yaml` and **verified against the real build** — `npm run check:csp` serves `dist/` under the exact policy and drives Chromium through all 11 routes: 0 violations, 10 OSM tiles loaded, Leaflet mounted (see §2.1) | PASS |
+| Clickjacking (`X-Frame-Options` / `frame-ancestors`) | `X-Frame-Options: DENY` plus `frame-ancestors 'none'` in the CSP; `test_render_yaml_keeps_the_security_headers` | PASS |
+| `/docs`, `/redoc`, `/openapi.json` in production | Withdrawn when `ENV == production` (`app/main.py`); `test_schema_routes_are_gone_in_production` (404 on all three) and `test_schema_routes_are_served_outside_production` (200 on all three) | PASS |
 
 gitleaks and trufflehog are not installed in this environment, so `scripts/scan_secrets.py` stands
 in for them: provider key shapes plus secret-ish assignments, over tracked files and over every
 commit, with matches masked in the output so a finding never reprints the secret.
 
-### The three open security items
+### 2.1 The three items, closed
 
-None of these is a leak; each is hardening that changes deployed behaviour, so they are left for
-a decision rather than applied blind. Suggested values:
+All three were applied on 2026-10-10 (D-65). The CSP was the only one that could white-screen
+the deploy, so it is not shipped on reasoning alone.
 
-```yaml
-# render.yaml, under the sqm-web headers list
-- path: /*
-  name: X-Frame-Options
-  value: DENY
-- path: /*
-  name: Content-Security-Policy
-  value: >-
-    default-src 'self'; img-src 'self' data: blob: https://*.tile.openstreetmap.org;
-    connect-src 'self' https://sqm-api.onrender.com https://*.sentry.io
-    https://api.open-meteo.com <gemma model host>; script-src 'self' 'wasm-unsafe-eval';
-    style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; media-src 'self' blob:;
-    frame-ancestors 'none'; base-uri 'self'; object-src 'none'
-```
+**What the policy allows, and why each entry is there.** Everything except the map tiles, the
+API and Sentry is served from the site's own origin — the fonts (`public/fonts`), the ~27 MB
+MediaPipe WASM (`/mediapipe-wasm/`, self-hosted per D-47), the demo audio, the service worker
+and the manifest:
 
-The CSP is a **proposal, not verified**: it cannot be tested locally against the real deployment,
-and getting it wrong silently breaks the map tiles, the Sentry transport, or the Gemma download.
-It needs one deploy plus a console check before it is trusted. `script-src` needs
-`'wasm-unsafe-eval'` for the MediaPipe verifier. The API URL and the model host must be the real
-post-deploy values.
+| Directive | Value | Load-bearing for |
+|---|---|---|
+| `script-src` | `'self' 'wasm-unsafe-eval'` | Vite emits no inline script, so no `'unsafe-inline'` and no nonce is needed. `'wasm-unsafe-eval'` is what lets the MediaPipe verifier compile its WASM |
+| `style-src` | `'self' 'unsafe-inline'` | Leaflet sets element styles at runtime. This is the one exception in the policy, and it is in `style-src` only — `test_csp_allows_no_unsafe_script_execution` pins that `script-src` never gets the same treatment |
+| `img-src` | `'self' data: blob: https://tile.openstreetmap.org` | OSM tiles; `data:`/`blob:` for inline art and the camera frame |
+| `connect-src` | `'self' <api> https://*.ingest.sentry.io https://*.ingest.us.sentry.io` | `/v1/*` and the Sentry transport. Open-Meteo is **not** here: weather is fetched server-side (`app/services/weather.py`), never from the browser |
+| `worker-src` / `media-src` | `'self' blob:` | The service worker and MediaPipe's worker; TTS audio played from a blob URL |
+| `frame-ancestors` / `object-src` / `base-uri` / `form-action` | `'none'` / `'none'` / `'self'` / `'none'` | Clickjacking, plugin embedding, base-tag injection; the app posts no HTML forms |
 
-For `/docs`: passing `docs_url=None, redoc_url=None, openapi_url=None` when `settings.env ==
-"production"` removes the schema from the public internet. It is information disclosure, not a
-vulnerability — the API needs no auth by design — so it is a judgement call, and the schema is
-genuinely useful for the demo and the write-up.
+**How it was verified.** `apps/web/scripts/check_csp.mjs` (`npm run check:csp`) parses the
+policy out of `render.yaml` — so the check cannot drift from what Render will actually send —
+serves the real `npm run build` output with that header, and visits every route in Chromium,
+failing on any `securitypolicyviolation` event. Two things make the pass meaningful rather than
+vacuous:
+
+- A blank page raises no violations either, so every route must render real text, and `/map`
+  must have mounted `.leaflet-container` **and** loaded at least one `img.leaflet-tile`. The
+  first run caught exactly this: `/map` reported "ok" while rendering its empty state, because
+  without a quest in storage the map never mounts. The script now seeds an accepted quest
+  before first paint, which is what makes the third-party `img-src` entry and Leaflet's inline
+  styles actually get exercised.
+- Result: `No CSP violations across 11 routes`, and `/map` → `10 OSM tiles loaded under the
+  policy`.
+
+**What this check still does not cover**, stated plainly:
+
+- The **verifier path**. Headless Chromium has no WebGPU and no model file, so
+  `'wasm-unsafe-eval'` and `worker-src blob:` are reasoned from D-47 and the MediaPipe loader,
+  not executed. Re-check on the WebGPU device at gate G2.
+- The **Sentry transport** (no DSN in a local build) and the **model download** (no
+  `VITE_GEMMA_MODEL_URL`). Both are `connect-src` entries that only a real deploy exercises.
+- The policy names `https://sqm-api.onrender.com`; the checker substitutes the local API origin.
+  **After the first deploy the real API host must replace it**, or every `/v1/*` call is blocked
+  — the same post-deploy edit that `VITE_API_BASE_URL` and `WEB_ORIGIN` already need. Likewise,
+  if `VITE_GEMMA_MODEL_URL` is ever set, its host has to be added to `connect-src` (by default
+  it is empty and players import the model file themselves — D-48).
+
+For `/docs`: now `docs_url=None, redoc_url=None, openapi_url=None` when `settings.env ==
+"production"`. The schema stays available in development and test, and `app.openapi()` still
+works in production — which is what the JSON-only privacy test reads — so only the public
+routes are withdrawn. The API needs no auth by design, so this is information disclosure rather
+than a vulnerability; the demo and the write-up are served by a non-production instance.
 
 ## 3. Privacy checklist (§9.3)
 
@@ -152,7 +175,9 @@ genuinely useful for the demo and the write-up.
 | # | Item | Needs |
 |---|---|---|
 | 1 | Red-team against the real tuned model | A tuned GGUF (P17 has not been run) |
-| 2 | Content-Security-Policy | Your call on the proposal above, then one deploy to verify |
-| 3 | `X-Frame-Options: DENY` | Your call (low risk — nothing embeds this app in a frame) |
-| 4 | Hide `/docs` in production | Your call (information disclosure only) |
-| 5 | gitleaks / trufflehog in CI | Optional: the in-repo scanner covers the same ground and runs offline |
+| 2 | CSP: the real API host in `connect-src` | The first deploy's `onrender.com` URL (the same edit `VITE_API_BASE_URL` / `WEB_ORIGIN` need) |
+| 3 | CSP: the verifier and Sentry paths | The WebGPU device (gate G2) and a deploy with a DSN — see "what this check does not cover" in §2.1 |
+| 4 | gitleaks / trufflehog in CI | Optional: the in-repo scanner covers the same ground and runs offline |
+
+Items 2 and 3 are not decisions — they are the parts of the CSP that only a real deployment can
+confirm. None of them blocks the deploy.

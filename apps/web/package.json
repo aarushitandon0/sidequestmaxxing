@@ -13,6 +13,7 @@
     "test": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
+    "check:csp": "node scripts/check_csp.mjs",
     "e2e": "playwright test"
   },
   "dependencies": {

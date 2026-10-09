@@ -30,7 +30,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging()
     init_sentry(settings)
 
-    app = FastAPI(title="Sidequestmaxxing API", version=settings.git_sha, lifespan=lifespan)
+    # The interactive schema is useful for the demo and the write-up, but in production it is
+    # public information disclosure with no upside (the API needs no auth by design, so the
+    # schema is a map of every rate limit and body shape). Off there, on everywhere else.
+    public_schema = settings.env != "production"
+
+    app = FastAPI(
+        title="Sidequestmaxxing API",
+        version=settings.git_sha,
+        lifespan=lifespan,
+        docs_url="/docs" if public_schema else None,
+        redoc_url="/redoc" if public_schema else None,
+        openapi_url="/openapi.json" if public_schema else None,
+    )
     app.state.settings = settings
     app.state.limiter = limiter
     install_error_handlers(app)

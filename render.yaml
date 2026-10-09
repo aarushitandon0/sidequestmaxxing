@@ -20,6 +20,27 @@ services:
       - path: /*
         name: Permissions-Policy
         value: camera=(self), geolocation=(self), microphone=()
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      # CSP allow-lists exactly what the built bundle loads (D-65). Everything but the map
+      # tiles, the API and Sentry is self-hosted: fonts (public/fonts), the MediaPipe WASM
+      # (/mediapipe-wasm, needs 'wasm-unsafe-eval'), demo audio, the SW and the manifest.
+      # 'unsafe-inline' is in style-src only — Leaflet sets element styles at runtime; no
+      # script-src exception is needed because Vite emits no inline script.
+      # Verified against a real `npm run build` in Chromium: 0 CSP violations across
+      # Story/Home/Quest/Walk/Chronicle/Settings (apps/web: npm run check:csp).
+      # After the first deploy: replace the sqm-api host below with the real one, and if you
+      # set VITE_GEMMA_MODEL_URL, add its host to connect-src or the download is blocked.
+      - path: /*
+        name: Content-Security-Policy
+        value: >-
+          default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none';
+          form-action 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'
+          'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org;
+          font-src 'self'; media-src 'self' blob:; worker-src 'self' blob:;
+          manifest-src 'self'; connect-src 'self' https://sqm-api.onrender.com
+          https://*.ingest.sentry.io https://*.ingest.us.sentry.io
     routes:
       - type: rewrite
         source: /*

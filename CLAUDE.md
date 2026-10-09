@@ -32,6 +32,7 @@ uvicorn app.main:app --reload --port 8000
 cd apps/web && npm ci
 npm run dev | npm run build | npm run test | npm run lint | npm run typecheck
 npm run e2e                                 # Playwright (pre-installed Chromium; mocked API, fake verifier build)
+npm run check:csp                           # render.yaml CSP vs the real dist/ in Chromium (needs npm run build first)
 
 # Data / infra
 python scripts/create_indexes.py            # collections + Atlas vector indexes

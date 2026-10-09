@@ -1,5 +1,6 @@
 """Device id, error format, rate limits, body limit, CORS, request models."""
 
+import pathlib
 import uuid
 from typing import Any
 
@@ -273,3 +274,71 @@ def test_draft_cross_field_rules() -> None:
 def test_full_quest_includes_server_fields() -> None:
     q = Quest.model_validate({**_DRAFT, "id": "q1", "rarity": "common", "xp": 60})
     assert q.xp == 60 and q.place is None
+
+
+# --- hardening: public schema and the static-site headers (P20, D-65) ------------------------
+
+
+def test_schema_routes_are_served_outside_production(settings: Settings) -> None:
+    client = TestClient(create_app(settings))
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(path).status_code == 200, path
+
+
+def test_schema_routes_are_gone_in_production() -> None:
+    prod = Settings(
+        env="production",
+        web_origin="https://web.example",
+        mongodb_uri="mongodb://localhost:27017",
+        sentry_dsn=None,
+    )
+    client = TestClient(create_app(prod))
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(path).status_code == 404, path
+    # The app still knows its own schema — only the public routes are withdrawn.
+    assert "/v1/quests/generate" in create_app(prod).openapi()["paths"]
+
+
+def test_healthz_still_served_in_production() -> None:
+    """The gate must not take Render's health check with it.
+
+    Asserted off the schema rather than by calling it: /healthz opens a Mongo client, and the
+    cached client would then be bound to this test's event loop for the rest of the session.
+    """
+    prod = Settings(
+        env="production",
+        web_origin="https://web.example",
+        mongodb_uri="mongodb://localhost:27017",
+        sentry_dsn=None,
+    )
+    assert "/healthz" in create_app(prod).openapi()["paths"]
+
+
+_RENDER_YAML = pathlib.Path(__file__).resolve().parents[3] / "render.yaml"
+
+
+@pytest.mark.parametrize(
+    "fragment",
+    [
+        "name: X-Frame-Options",
+        "value: DENY",
+        "name: Content-Security-Policy",
+        # The directives a careless edit would drop first, and what each one is load-bearing
+        # for: the MediaPipe WASM, Leaflet's runtime inline styles, OSM tiles, clickjacking.
+        "frame-ancestors 'none'",
+        "'wasm-unsafe-eval'",
+        "'unsafe-inline'",
+        "https://tile.openstreetmap.org",
+        "object-src 'none'",
+    ],
+)
+def test_render_yaml_keeps_the_security_headers(fragment: str) -> None:
+    assert fragment in _RENDER_YAML.read_text(encoding="utf-8"), fragment
+
+
+def test_csp_allows_no_unsafe_script_execution() -> None:
+    """'unsafe-inline'/'unsafe-eval' in script-src would undo the point of the header."""
+    text = _RENDER_YAML.read_text(encoding="utf-8")
+    start = text.index("script-src 'self'")  # the directive, not the comment above it
+    script_src = text[start : text.index(";", start)]
+    assert "'unsafe-inline'" not in script_src and "'unsafe-eval'" not in script_src
