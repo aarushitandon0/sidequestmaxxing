@@ -54,7 +54,7 @@ def load_summary(run: str, base_model: str) -> dict[str, Any]:
     path = common.RUNS / run / "summary.json"
     if not path.exists():
         raise SystemExit(f"no SFT summary at {path}; run train_sft.py --go first")
-    data: dict[str, Any] = json.loads(path.read_text())
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     trained = (data.get("config") or {}).get("base_model")
     if trained != base_model:
         raise SystemExit(f"run {run} trained {trained}, export config says {base_model}")
@@ -63,7 +63,7 @@ def load_summary(run: str, base_model: str) -> dict[str, Any]:
 
 def export_meta(run: str) -> dict[str, Any]:
     path = common.RUNS / run / "export.json"
-    return json.loads(path.read_text()) if path.exists() else {}
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
 def update_meta(run: str, **fields: Any) -> None:
@@ -201,7 +201,9 @@ def step_gguf(args: argparse.Namespace, cfg: dict[str, Any], p: Paths, run: Runn
 def step_card(args: argparse.Namespace, cfg: dict[str, Any], p: Paths) -> None:
     sha = export_meta(args.run).get("sha256")
     p.work.mkdir(parents=True, exist_ok=True)
-    p.card.write_text(render_card(cfg, load_summary(args.run, cfg["base_model"]), sha))
+    p.card.write_text(
+        render_card(cfg, load_summary(args.run, cfg["base_model"]), sha), encoding="utf-8"
+    )
     log.info("wrote %s", p.card)
 
 

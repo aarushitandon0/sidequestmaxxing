@@ -25,7 +25,9 @@ def test_contexts_are_deterministic_and_area_split(ctx_dir: Path, tmp_path: Path
     again = tmp_path / "again"
     make_contexts.main(["--synthetic", "--scale", "0.1", "--out", str(again)])
     for split in ("train", "val", "test"):
-        assert (ctx_dir / f"{split}.jsonl").read_text() == (again / f"{split}.jsonl").read_text()
+        assert (ctx_dir / f"{split}.jsonl").read_text(encoding="utf-8") == (
+            again / f"{split}.jsonl"
+        ).read_text(encoding="utf-8")
     areas = {s: {r["area"] for r in rows(ctx_dir / f"{s}.jsonl")} for s in ("train", "val", "test")}
     assert not areas["train"] & areas["test"]
     assert not areas["train"] & areas["val"]

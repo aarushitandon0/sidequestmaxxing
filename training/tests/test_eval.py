@@ -24,7 +24,7 @@ def full_dry_run(ctx: Path) -> dict:
         assert run(ctx, "run", "--arm", arm, "--mock", "--label", label,
                    "--diversity-contexts", "3", "--diversity-samples", "4") == 0  # fmt: skip
     assert run(ctx, "report", "--mock-judge", "--embedder", "hash") == 0
-    return json.loads((harness.DRY_DIR / "results.json").read_text())
+    return json.loads((harness.DRY_DIR / "results.json").read_text(encoding="utf-8"))
 
 
 def test_dry_run_writes_complete_report(ctx_dir: Path, dry: Path) -> None:
@@ -39,7 +39,7 @@ def test_dry_run_writes_complete_report(ctx_dir: Path, dry: Path) -> None:
     # baseline uses the few-shot prompt → much longer prompts than tuned
     tok = next(m for m in res["metrics"] if m["label"] == "Prompt tokens")
     assert tok["baseline"] > 2 * tok["tuned"]
-    md = (dry / "results.md").read_text()
+    md = (dry / "results.md").read_text(encoding="utf-8")
     assert "DRY RUN" in md and "5 worst" in md and "Judge bias" in md
     assert "{" not in md.split("## Voice")[0].replace('{"', "")  # no unformatted placeholders
     assert (dry / "human_pairs.csv").exists()
@@ -80,15 +80,15 @@ def test_judge_must_be_other_family(ctx_dir: Path, dry: Path) -> None:
 def test_human_ratings_are_read_back(ctx_dir: Path, dry: Path) -> None:
     full_dry_run(ctx_dir)
     path = dry / "human_pairs.csv"
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     assert rows and {"pair_id", "quest_A", "quest_B", "preferred"} <= set(rows[0])
     for r in rows:
         r["preferred"] = "A"
-    with path.open("w", newline="") as f:
+    with path.open("w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
     assert run(ctx_dir, "report", "--mock-judge", "--embedder", "hash") == 0
-    human = json.loads((dry / "results.json").read_text())["voice"]["human"]
+    human = json.loads((dry / "results.json").read_text(encoding="utf-8"))["voice"]["human"]
     assert human["rated"] == len(rows) and human["tuned_win_rate"] is not None

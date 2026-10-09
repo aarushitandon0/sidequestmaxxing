@@ -8,7 +8,9 @@ from app.services.geo import cell5
 from app.services.osm import classify, overpass_query, parse_bbox, places_from_overpass
 
 NOW = datetime(2026, 10, 7, tzinfo=UTC)
-SAMPLE = json.loads((Path(__file__).parent / "fixtures" / "overpass_sample.json").read_text())
+SAMPLE = json.loads(
+    (Path(__file__).parent / "fixtures" / "overpass_sample.json").read_text(encoding="utf-8")
+)
 
 
 def _by_id() -> dict[str, dict[str, object]]:

@@ -82,7 +82,9 @@ def save_run_metadata(name: str, payload: dict[str, Any]) -> Path:
     RUNS.mkdir(parents=True, exist_ok=True)
     path = RUNS / f"{name}.json"
     body = {"git_rev": git_rev(), "written_at": datetime.now(UTC).isoformat(), **payload}
-    path.write_text(json.dumps(body, indent=2, sort_keys=True, default=str) + "\n")
+    path.write_text(
+        json.dumps(body, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8"
+    )
     return path
 
 
@@ -92,7 +94,8 @@ def append_runs_md(line: str) -> None:
     path = RUNS / "RUNS.md"
     if not path.exists():
         path.write_text(
-            "# Training runs\n\nWritten by the training scripts — do not hand-edit numbers.\n\n"
+            "# Training runs\n\nWritten by the training scripts — do not hand-edit numbers.\n\n",
+            encoding="utf-8",
         )
     with path.open("a", encoding="utf-8") as f:
         f.write(line.rstrip() + "\n")

@@ -187,7 +187,9 @@ async def run_arm(args: argparse.Namespace) -> Path:
         "contexts": len(records), "mock": args.mock, "git_rev": git_rev(), "run_at": utc_stamp(),
         "diversity_contexts": len(diversity_ids), "diversity_samples": args.diversity_samples,
     }  # fmt: skip
-    (out_dir / "raw" / f"{args.arm}.meta.json").write_text(json.dumps(meta, indent=2) + "\n")
+    (out_dir / "raw" / f"{args.arm}.meta.json").write_text(
+        json.dumps(meta, indent=2) + "\n", encoding="utf-8"
+    )
     print(f"wrote {path}")
     return path
 
@@ -365,7 +367,7 @@ def human_pairs(
     """Write 20 blinded pairs for hand rating, or read the ratings back if already filled."""
     csv_path, key_path = out_dir / "human_pairs.csv", out_dir / "human_pairs_key.json"
     if csv_path.exists() and key_path.exists():
-        key = json.loads(key_path.read_text())
+        key = json.loads(key_path.read_text(encoding="utf-8"))
         with csv_path.open(encoding="utf-8") as f:
             rated = [
                 r for r in csv.DictReader(f) if r.get("preferred", "").strip().upper() in ("A", "B")
@@ -383,7 +385,7 @@ def human_pairs(
         w = csv.DictWriter(f, fieldnames=["pair_id", "quest_A", "quest_B", "preferred"])
         w.writeheader()
         w.writerows(lines)
-    key_path.write_text(json.dumps(key, indent=2) + "\n")
+    key_path.write_text(json.dumps(key, indent=2) + "\n", encoding="utf-8")
     return {"rated": 0, "tuned_win_rate": None, "csv": str(csv_path)}
 
 
@@ -441,7 +443,7 @@ async def report(args: argparse.Namespace) -> dict[str, Any]:
     scored: dict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = {}
     for arm in ARMS:
         rows = list(read_jsonl(src / "raw" / f"{arm}.jsonl"))
-        meta = json.loads((src / "raw" / f"{arm}.meta.json").read_text())
+        meta = json.loads((src / "raw" / f"{arm}.meta.json").read_text(encoding="utf-8"))
         pairs = [(r, score(r, contexts[r["context_id"]])) for r in rows]
         scored[arm] = pairs
         arms[arm] = {"label": meta["label"], "mock": meta["mock"], "seed": meta["seed"]}
@@ -488,8 +490,10 @@ async def report(args: argparse.Namespace) -> dict[str, Any]:
         "arms": arms,
     }  # fmt: skip
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "results.json").write_text(json.dumps(results, indent=2, ensure_ascii=False) + "\n")
-    (out_dir / "results.md").write_text(render_md(results))
+    (out_dir / "results.json").write_text(
+        json.dumps(results, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    (out_dir / "results.md").write_text(render_md(results), encoding="utf-8")
     print(render_md(results))
     print(f"wrote {out_dir / 'results.json'}")
     return results

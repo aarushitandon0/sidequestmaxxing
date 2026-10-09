@@ -15,7 +15,7 @@ from app.validators import ValidationContext, banned_hits, validate_quest
 from tests.quest_factory import CANDIDATES
 
 CASES: list[dict[str, Any]] = json.loads(
-    (Path(__file__).parent / "redteam_cases.json").read_text()
+    (Path(__file__).parent / "redteam_cases.json").read_text(encoding="utf-8")
 )["cases"]
 
 

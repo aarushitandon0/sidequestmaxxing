@@ -1,6 +1,7 @@
 """SFT script (P15): data mix, LR schedule, scoring, gating, and the loop on a fake Tinker."""
 
 import json
+import shutil
 import sys
 import types
 from pathlib import Path
@@ -20,7 +21,11 @@ from train_sft import EpochResult, lr_schedule, pass_rate
 def data_dir(ctx_dir: Path, tmp_path: Path) -> Path:
     d = tmp_path / "data"
     d.mkdir()
-    (d / "contexts").symlink_to(ctx_dir, target_is_directory=True)
+    try:
+        (d / "contexts").symlink_to(ctx_dir, target_is_directory=True)
+    except OSError:
+        # Windows needs Developer Mode or admin rights to symlink; a copy works the same here.
+        shutil.copytree(ctx_dir, d / "contexts")
     teacher = tmp_path / "teacher"
     for split in ("train", "val"):
         gen_teacher.main(
@@ -187,4 +192,4 @@ def test_loop_on_fake_tinker(
     assert lrs[0] == pytest.approx(1e-3) and lrs == sorted(lrs, reverse=True)
     assert results[0].pass_rate == 0.0 and results[0].failure_ids == {"V1": 4}
     assert results[1].sampler_path == "tinker://run/lr1e-03-e2"
-    assert len((tmp_path / "metrics.jsonl").read_text().splitlines()) == 4
+    assert len((tmp_path / "metrics.jsonl").read_text(encoding="utf-8").splitlines()) == 4

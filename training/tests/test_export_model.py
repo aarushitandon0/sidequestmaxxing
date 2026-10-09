@@ -30,10 +30,10 @@ def run(tmp_path: Path) -> str:
 
 @pytest.fixture
 def cfg_path(tmp_path: Path) -> Path:
-    cfg = json.loads((export_model.CONFIG).read_text())
+    cfg = json.loads((export_model.CONFIG).read_text(encoding="utf-8"))
     cfg["hf_repo"] = "someone/sqm-quest-master"
     path = tmp_path / "export.json"
-    path.write_text(json.dumps(cfg))
+    path.write_text(json.dumps(cfg), encoding="utf-8")
     return path
 
 
@@ -79,24 +79,26 @@ def test_download_and_merge_use_cookbook(
     assert calls[1] == ("build_hf_model", {"base_model": "Qwen/Qwen3.5-4B",
                                            "adapter_path": str(work / "adapter"),
                                            "output_path": str(work / "merged")})  # fmt: skip
-    meta = json.loads((common.RUNS / run / "export.json").read_text())
+    meta = json.loads((common.RUNS / run / "export.json").read_text(encoding="utf-8"))
     assert meta["sampler_path"] == "tinker://abc/sampler_weights/e2"
     assert meta["merged"] == "bfloat16"
 
 
 def test_gguf_commands_convert_then_quantize(tmp_path: Path) -> None:
-    cfg = json.loads(export_model.CONFIG.read_text())
+    cfg = json.loads(export_model.CONFIG.read_text(encoding="utf-8"))
     p = export_model.Paths(tmp_path, cfg)
-    convert, quant = export_model.gguf_commands(p, Path("/llama"), "Q4_K_M")
-    assert convert[1:] == ["/llama/convert_hf_to_gguf.py", str(p.merged), "--outfile",
+    llama = Path("/llama")
+    convert, quant = export_model.gguf_commands(p, llama, "Q4_K_M")
+    # Expectations are built from the same Path, so the separators match whatever OS runs this.
+    assert convert[1:] == [str(llama / "convert_hf_to_gguf.py"), str(p.merged), "--outfile",
                            str(p.bf16), "--outtype", "bf16"]  # fmt: skip
-    assert quant == ["/llama/build/bin/llama-quantize", str(p.bf16), str(p.gguf), "Q4_K_M"]
+    assert quant == [str(llama / "build/bin/llama-quantize"), str(p.bf16), str(p.gguf), "Q4_K_M"]
 
 
 def test_base_model_mismatch_refuses(run: str, cfg_path: Path, tmp_path: Path) -> None:
-    cfg = json.loads(cfg_path.read_text())
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
     cfg["base_model"] = "Qwen/Qwen3-8B"
-    cfg_path.write_text(json.dumps(cfg))
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
     with pytest.raises(SystemExit):
         call("card", run, cfg_path, tmp_path / "w")
 
@@ -109,7 +111,7 @@ def test_sha_card_and_publish_guards(
     with pytest.raises(SystemExit):  # no GGUF yet
         call("sha", run, cfg_path, work)
     work.mkdir()
-    gguf = work / json.loads(cfg_path.read_text())["gguf_file"]
+    gguf = work / json.loads(cfg_path.read_text(encoding="utf-8"))["gguf_file"]
     gguf.write_bytes(b"GGUF fake model bytes")
     want = hashlib.sha256(b"GGUF fake model bytes").hexdigest()
 
@@ -122,7 +124,7 @@ def test_sha_card_and_publish_guards(
     ) in out
 
     call("card", run, cfg_path, work)
-    card = (work / "README.md").read_text()
+    card = (work / "README.md").read_text(encoding="utf-8")
     for needle in ("license: apache-2.0", "base_model: Qwen/Qwen3.5-4B", "## Training summary",
                    "## Intended use", "## Limitations", "87.0% (n=100)", want,
                    "github.com/aarushitandon0/sidequestmaxxing"):  # fmt: skip
@@ -147,7 +149,10 @@ def test_sha_card_and_publish_guards(
     monkeypatch.setenv("HF_TOKEN", "hf_test_not_real")
     assert call("publish", run, cfg_path, work, "--go") == 0
     assert [u.get("path_in_repo") for u in uploads[1:]] == ["README.md", gguf.name]
-    assert json.loads((common.RUNS / run / "export.json").read_text())["published"] is True
+    assert (
+        json.loads((common.RUNS / run / "export.json").read_text(encoding="utf-8"))["published"]
+        is True
+    )
 
     gguf.write_bytes(b"different bytes")  # GGUF changed after sha: refuse
     with pytest.raises(SystemExit, match="changed"):

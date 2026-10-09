@@ -165,10 +165,12 @@ async def test_total_call_timeout_is_enforced() -> None:
 
 
 async def test_unreachable_llm_falls_back_fast() -> None:
-    # Nothing listens on port 9: connection refused → fallback well under 3 s.
+    # Nothing listens on port 9 → fallback well under 3 s. Which error we get is the OS's
+    # choice: Linux refuses the connection, Windows lets the connect attempt time out.
     start = time.perf_counter()
     res = await run_quest_master(inp(), LLMClient("http://127.0.0.1:9"))
-    assert res.source == "fallback" and res.fallback_reason == "llm_connection"
+    assert res.source == "fallback"
+    assert res.fallback_reason in ("llm_connection", "llm_timeout"), res.fallback_reason
     assert time.perf_counter() - start < 3
 
 
