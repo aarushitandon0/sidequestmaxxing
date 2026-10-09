@@ -14,7 +14,15 @@ from typing import Any, Literal
 
 from app.agents.quest_master import extract_json_text
 from app.models.enums import CATEGORIES, Persona
-from app.observability import span
+from app.observability import (
+    ATTR_INPUT_TOKENS,
+    ATTR_OUTPUT_TOKENS,
+    ATTR_RESPONSE_MODEL,
+    agent_span,
+    chat_span,
+    mark_span_error,
+    span,
+)
 from app.prompts import load_prompt
 from app.services.llm_client import LLMClient, LLMError
 from app.validators.recap import (
@@ -174,18 +182,32 @@ async def run_chronicler(inp: RecapInput, client: LLMClient | None) -> Chronicle
     """Never raises. Requires ≥ 1 completion (the endpoint handles empty weeks)."""
     if client is None:
         return _fallback(inp, "llm_not_configured")
+    with agent_span("chronicler"):
+        return await _run(inp, client)
+
+
+async def _run(inp: RecapInput, client: LLMClient) -> ChroniclerResult:
     messages = build_recap_messages(inp)
     failures: list[str] = []
     for attempt in range(2):
         try:
-            with span("gen_ai.chat", name=f"chat {client.model}") as s:
-                s.set_data("gen_ai.request.model", client.model)
-                s.set_data("attempt", attempt)
-                res = await client.chat(
-                    messages, recap_json_schema(), max_tokens=RECAP_MAX_TOKENS, schema_name="recap"
-                )
-                s.set_data("gen_ai.usage.input_tokens", res.prompt_tokens)
-                s.set_data("gen_ai.usage.output_tokens", res.completion_tokens)
+            with chat_span(
+                client.model, agent="chronicler", max_tokens=RECAP_MAX_TOKENS, attempt=attempt
+            ) as s:
+                try:
+                    res = await client.chat(
+                        messages,
+                        recap_json_schema(),
+                        max_tokens=RECAP_MAX_TOKENS,
+                        schema_name="recap",
+                    )
+                except LLMError as exc:
+                    mark_span_error(s, exc.kind)
+                    raise
+                s.set_data(ATTR_RESPONSE_MODEL, res.model)
+                s.set_data(ATTR_INPUT_TOKENS, res.prompt_tokens)
+                s.set_data(ATTR_OUTPUT_TOKENS, res.completion_tokens)
+                s.set_data("latency_ms", res.latency_ms)
         except LLMError as exc:
             log.warning("recap llm call failed", extra={"kind": exc.kind, "attempt": attempt})
             out = _fallback(inp, f"llm_{exc.kind}")

@@ -7,6 +7,7 @@ import { World } from './World'
 import { XpBar } from './XpBar'
 import { useOnline, useProfile } from '../state/hooks'
 import { loadPrefs } from '../lib/prefs'
+import { reportError } from '../lib/sentry'
 
 const NAV = [
   { to: '/home', label: 'Quests', Icon: HomeIcon },
@@ -118,9 +119,13 @@ interface EBState {
 export class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
   state: EBState = { error: null }
 
-  // No PII: nothing is reported anywhere yet (frontend Sentry is P19).
   static getDerivedStateFromError(error: Error): EBState {
     return { error }
+  }
+
+  // Scrubbed by beforeSend: no coordinates, no device id (MASTERSPEC §9.3).
+  componentDidCatch(error: Error) {
+    reportError(error)
   }
 
   render() {

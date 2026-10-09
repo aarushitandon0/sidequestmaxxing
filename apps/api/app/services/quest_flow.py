@@ -13,7 +13,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-import sentry_sdk
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
@@ -23,6 +22,7 @@ from app.agents.scout import scout
 from app.errors import db_unavailable
 from app.models.quest import PlaceRef, Quest, QuestDraft
 from app.models.requests import QuestRequest
+from app.observability import name_transaction, tag_outcome
 from app.services.db import Doc
 from app.services.embeddings import Embedder
 from app.services.game import RARE_MAX_MINUTES, rarity_for, xp_preview
@@ -63,7 +63,7 @@ async def generate_quest(
     req: QuestRequest, device_id: str, deps: GenerateDeps, now: datetime | None = None
 ) -> Quest:
     now = now or datetime.now(UTC)
-    sentry_sdk.get_current_scope().set_transaction_name("quests.generate")
+    name_transaction("quests.generate")
 
     # Server clock in the player's UTC offset: daylight rules never trust the client clock.
     ctx = await build_context(req, deps.weather, now=now)
@@ -88,9 +88,7 @@ async def generate_quest(
     )
     quest = hydrate(result.quest, found.candidates, quest_id)
 
-    sentry_sdk.set_tag("source", result.source)
-    sentry_sdk.set_tag("retry", str(result.retries))
-    sentry_sdk.set_tag("validator_failures", ",".join(result.validator_failures) or "none")
+    tag_outcome(result.source, result.retries, result.validator_failures)
     log.info(
         "quest generated",
         extra={

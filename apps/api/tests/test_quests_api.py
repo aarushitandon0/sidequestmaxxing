@@ -15,7 +15,7 @@ from app.config import Settings
 from app.deps import get_db, get_embedder_dep, get_llm_client, get_weather_client_dep, utc_now
 from app.main import create_app
 from app.models.quest import Quest
-from app.services.llm_client import LLMClient
+from app.services.llm_client import CONNECT_TIMEOUT_S, LLMClient
 from app.services.weather import WeatherClient
 from app.validators.core import ValidationContext, validate_quest
 from tests.fakes import FakeDB, FakeEmbedder, MemCollection, place_doc
@@ -133,12 +133,13 @@ def test_llm_cannot_set_server_fields() -> None:
 
 
 def test_generate_falls_back_fast_when_llm_unreachable() -> None:
-    h = Harness(LLMClient("http://127.0.0.1:9"))  # connection refused
+    h = Harness(LLMClient("http://127.0.0.1:9"))  # refused on Linux, connect timeout on Windows
     start = time.perf_counter()
     res = h.generate()
     elapsed = time.perf_counter() - start
     assert res.status_code == 200
-    assert elapsed < 3, elapsed
+    # Give up at the connect timeout, nowhere near the 25 s request timeout (see §2.4).
+    assert elapsed < CONNECT_TIMEOUT_S + 3, elapsed
     q = Quest.model_validate(res.json())
     ctx = ValidationContext(minutes_available=60, daylight_minutes_left=195)
     from app.services.places_repo import to_candidate

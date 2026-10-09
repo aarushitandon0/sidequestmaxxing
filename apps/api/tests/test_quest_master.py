@@ -18,7 +18,12 @@ from app.agents.quest_master import (
 )
 from app.models.context import QuestContext
 from app.prompts import quest_master_system
-from app.services.llm_client import LLMClient, LLMError, parse_response
+from app.services.llm_client import (
+    CONNECT_TIMEOUT_S,
+    LLMClient,
+    LLMError,
+    parse_response,
+)
 from app.validators.core import validate_quest
 from tests.fakes import FakeEmbedder
 from tests.quest_factory import CANDIDATES, quest
@@ -165,13 +170,18 @@ async def test_total_call_timeout_is_enforced() -> None:
 
 
 async def test_unreachable_llm_falls_back_fast() -> None:
-    # Nothing listens on port 9 → fallback well under 3 s. Which error we get is the OS's
-    # choice: Linux refuses the connection, Windows lets the connect attempt time out.
+    """Nothing listens on port 9: we must give up at the connect timeout, not the request one.
+
+    Which error we get is the OS's call — Linux refuses the connection outright, Windows lets
+    the connect attempt run to CONNECT_TIMEOUT_S — so the budget is that timeout plus slack,
+    well short of the 25 s request timeout a hung LLM would cost.
+    """
     start = time.perf_counter()
     res = await run_quest_master(inp(), LLMClient("http://127.0.0.1:9"))
+    elapsed = time.perf_counter() - start
     assert res.source == "fallback"
     assert res.fallback_reason in ("llm_connection", "llm_timeout"), res.fallback_reason
-    assert time.perf_counter() - start < 3
+    assert elapsed < CONNECT_TIMEOUT_S + 3, elapsed
 
 
 async def test_http_error_and_bad_body_fall_back() -> None:

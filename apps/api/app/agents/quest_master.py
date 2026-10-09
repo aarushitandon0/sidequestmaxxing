@@ -19,10 +19,18 @@ from app.agents.fallback_engine import FallbackInput, generate_fallback_quest
 from app.models.context import QuestContext
 from app.models.enums import Category, Mood, Persona
 from app.models.quest import QuestDraft, llm_json_schema
-from app.observability import span
+from app.observability import (
+    ATTR_INPUT_TOKENS,
+    ATTR_OUTPUT_TOKENS,
+    ATTR_RESPONSE_MODEL,
+    agent_span,
+    chat_span,
+    mark_span_error,
+    span,
+)
 from app.prompts import quest_master_system
 from app.services.embeddings import Embedder
-from app.services.llm_client import LLMClient, LLMError, LLMResponse
+from app.services.llm_client import MAX_TOKENS, LLMClient, LLMError, LLMResponse
 from app.services.places_repo import Candidate
 from app.validators.core import (
     ValidationContext,
@@ -174,13 +182,15 @@ async def _validate(
 
 
 async def _call(client: LLMClient, messages: list[dict[str, str]], attempt: int) -> LLMResponse:
-    with span("gen_ai.chat", name=f"chat {client.model}") as s:
-        s.set_data("gen_ai.request.model", client.model)
-        s.set_data("attempt", attempt)
-        res = await client.chat(messages, llm_json_schema())
-        s.set_data("gen_ai.response.model", res.model)
-        s.set_data("gen_ai.usage.input_tokens", res.prompt_tokens)
-        s.set_data("gen_ai.usage.output_tokens", res.completion_tokens)
+    with chat_span(client.model, agent="quest_master", max_tokens=MAX_TOKENS, attempt=attempt) as s:
+        try:
+            res = await client.chat(messages, llm_json_schema())
+        except LLMError as exc:
+            mark_span_error(s, exc.kind)
+            raise
+        s.set_data(ATTR_RESPONSE_MODEL, res.model)
+        s.set_data(ATTR_INPUT_TOKENS, res.prompt_tokens)
+        s.set_data(ATTR_OUTPUT_TOKENS, res.completion_tokens)
         s.set_data("latency_ms", res.latency_ms)
         return res
 
@@ -239,7 +249,17 @@ async def run_quest_master(
     """Never raises (unless fallback_on_error=False and the LLM transport fails)."""
     if client is None:
         return fallback_result(inp, "llm_not_configured")
+    with agent_span("quest_master"):
+        return await _run(inp, client, embedder, fallback_on_error=fallback_on_error)
 
+
+async def _run(
+    inp: QuestMasterInput,
+    client: LLMClient,
+    embedder: Embedder | None,
+    *,
+    fallback_on_error: bool,
+) -> QuestMasterResult:
     messages = build_messages(inp)
     attempts = _Attempts(model=client.model)
     for attempt in range(2):

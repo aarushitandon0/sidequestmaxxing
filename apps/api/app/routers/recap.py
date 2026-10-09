@@ -16,7 +16,7 @@ from app.agents.chronicler import RecapInput, run_chronicler
 from app.deps import DeviceId, Now, get_db, get_llm_client
 from app.errors import db_unavailable
 from app.models.recap import WeeklyRecap
-from app.observability import span
+from app.observability import name_transaction, span, tag_outcome
 from app.ratelimit import RECAP_LIMIT, limiter
 from app.services.completion import local_date
 from app.services.db import Doc
@@ -64,6 +64,7 @@ async def weekly_recap(
     llm: Annotated[LLMClient | None, Depends(get_llm_client)],
     now: Now,
 ) -> WeeklyRecap:
+    name_transaction("recap.weekly")
     try:
         persona, offset = await device_persona(db, device_id)
         start, end = window(local_date(now, offset))
@@ -71,19 +72,23 @@ async def weekly_recap(
             docs = await week_completions(db, device_id, start)
             s.set_data("completions", len(docs))
         if not docs:
+            tag_outcome("empty", 0)
             return WeeklyRecap(id=None, week_start=start, week_end=end, text=EMPTY_TEXT,
                                stats=RecapStats(quests=0, minutes=0, top_category=None),
                                source="empty", created_at=None)  # fmt: skip
         ids = completion_ids(docs)
         stored = await find_recap(db, device_id, start)
         if stored is not None and stored.get("completion_ids") == ids:
-            return _out(stored)  # idempotent: same week, same completions → same recap
+            # Idempotent: same week, same completions → same recap, no LLM call.
+            tag_outcome(f"cached:{stored['source']}", stored.get("retries", 0))
+            return _out(stored)
     except PyMongoError as exc:
         raise db_unavailable() from exc
 
     inp = RecapInput(persona=persona, week=week_label(start, end),
                      completions=[to_recap_completion(d) for d in docs])  # fmt: skip
     result = await run_chronicler(inp, llm)
+    tag_outcome(result.source, result.retries, result.validator_failures)
     doc: Doc = {
         "_id": str(uuid.uuid4()),
         "device_id": device_id,
