@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" width="1200" height="650" role="img" aria-labelledby="t d">
+  <title id="t">Training, export and evaluation pipeline</title>
+  <desc id="d">Places seeded from OpenStreetMap into Atlas are sampled into 3,220 contexts split by area so test places are unseen. A large open-weight teacher model sampled through Tinker writes drafts, which the production validators filter and deduplicate into roughly 2,900 JSONL chat rows carrying the byte-identical production system prompt. A LoRA supervised fine-tune on Tinker sweeps three learning rates over three epochs, keeping the best by validation pass rate. The adapter is merged, converted to GGUF, quantized to Q4_K_M, published to Hugging Face and pulled onto the sqm-llm disk by URL and SHA-256. Evaluation then runs against that exact served file, comparing baseline and tuned arms on 120 held-out contexts. The same validator code is the data filter, the serving gate and the eval metric. A status note records that the pipeline is built and tested on free and mock backends, but the paid run and export have not been executed, so the evals directory holds no numbers yet.</desc>
+  <style>
+    .lbl{font:600 20px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .hd{font:600 14px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .li{font:400 11.5px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#5e4b39}
+    .n{font:700 12px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#774c2b}
+    .bn{font:600 15px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .it{font:400 14px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .card{fill:#fdf3e2;stroke:#d0a26d;stroke-width:1.5}
+    .arrow{stroke:#436440;stroke-width:2.5;fill:none}
+  </style>
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#436440"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="650" fill="#fbf2e7"/>
+  <text class="lbl" x="40" y="42">Teaching the Dungeon Master, then checking the file Render actually serves</text>
+
+  <!-- row 1 -->
+  <rect class="card" x="40" y="66" width="192" height="138" rx="10"/>
+  <text class="n" x="56" y="88">step 1</text>
+  <text class="hd" x="56" y="108">Real places</text>
+  <text class="li" x="56" y="128">dump_places.py exports</text>
+  <text class="li" x="56" y="145">the seeded Atlas places</text>
+  <text class="li" x="56" y="162">fetched from Overpass,</text>
+  <text class="li" x="56" y="179">embedded with BGE-small</text>
+  <text class="li" x="56" y="196">on CPU. No API bill.</text>
+  <line class="arrow" x1="234" y1="135" x2="270" y2="135" marker-end="url(#g)"/>
+
+  <rect class="card" x="272" y="66" width="192" height="138" rx="10"/>
+  <text class="n" x="288" y="88">step 2</text>
+  <text class="hd" x="288" y="108">3,220 contexts</text>
+  <text class="li" x="288" y="128">3000 train / 100 val /</text>
+  <text class="li" x="288" y="145">120 test, split by area</text>
+  <text class="li" x="288" y="162">so test places are never</text>
+  <text class="li" x="288" y="179">seen in training. 8% have</text>
+  <text class="li" x="288" y="196">no candidates on purpose.</text>
+  <line class="arrow" x1="466" y1="135" x2="502" y2="135" marker-end="url(#g)"/>
+
+  <rect x="504" y="66" width="192" height="138" rx="10" fill="#e6ead6" stroke="#436440" stroke-width="2"/>
+  <text class="n" x="520" y="88">step 3</text>
+  <text class="hd" x="520" y="108">Open teacher</text>
+  <text class="li" x="520" y="128">A large Apache-2.0 model</text>
+  <text class="li" x="520" y="145">sampled through Tinker,</text>
+  <text class="li" x="520" y="162">with a long instruction</text>
+  <text class="li" x="520" y="179">prompt and 3 worked</text>
+  <text class="li" x="520" y="196">examples. Identity logged.</text>
+  <line class="arrow" x1="698" y1="135" x2="734" y2="135" marker-end="url(#g)"/>
+
+  <rect x="736" y="66" width="192" height="138" rx="10" fill="#f8e5c9" stroke="#a8402f" stroke-width="2"/>
+  <text class="n" x="752" y="88">step 4</text>
+  <text class="hd" x="752" y="108">Filter</text>
+  <text class="li" x="752" y="128">V1 to V11 from the API</text>
+  <text class="li" x="752" y="145">package, imported not</text>
+  <text class="li" x="752" y="162">copied. Dedupe above 0.92</text>
+  <text class="li" x="752" y="179">cosine per persona, then</text>
+  <text class="li" x="752" y="196">balance category and voice.</text>
+  <line class="arrow" x1="930" y1="135" x2="966" y2="135" marker-end="url(#g)"/>
+
+  <rect class="card" x="968" y="66" width="192" height="138" rx="10"/>
+  <text class="n" x="984" y="88">step 5</text>
+  <text class="hd" x="984" y="108">About 2,900 rows</text>
+  <text class="li" x="984" y="128">JSONL chat format with</text>
+  <text class="li" x="984" y="145">the byte-identical</text>
+  <text class="li" x="984" y="162">production system prompt.</text>
+  <text class="li" x="984" y="179">Roughly 85% quests and</text>
+  <text class="li" x="984" y="196">15% weekly chronicles.</text>
+
+  <path class="arrow" d="M1064 206 L1064 240 L136 240 L136 272" marker-end="url(#g)"/>
+
+  <!-- row 2 -->
+  <rect x="40" y="274" width="255" height="138" rx="10" fill="#e6ead6" stroke="#436440" stroke-width="2"/>
+  <text class="n" x="56" y="296">step 6</text>
+  <text class="hd" x="56" y="316">LoRA SFT on Tinker</text>
+  <text class="li" x="56" y="336">3 learning rates over 3 epochs, best kept by</text>
+  <text class="li" x="56" y="353">validation pass rate rather than loss alone.</text>
+  <text class="li" x="56" y="370">Fixed seeds. Config, git revision, counts and</text>
+  <text class="li" x="56" y="387">prompt hashes written to training/runs/.</text>
+  <text class="li" x="56" y="404">Thinking mode disabled on both sides.</text>
+  <line class="arrow" x1="297" y1="343" x2="323" y2="343" marker-end="url(#g)"/>
+
+  <rect class="card" x="325" y="274" width="255" height="138" rx="10"/>
+  <text class="n" x="341" y="296">step 7</text>
+  <text class="hd" x="341" y="316">Export to one file</text>
+  <text class="li" x="341" y="336">Download the adapter, merge it into the</text>
+  <text class="li" x="341" y="353">base with merge_and_unload, write HF</text>
+  <text class="li" x="341" y="370">safetensors, run convert_hf_to_gguf.py,</text>
+  <text class="li" x="341" y="387">quantize to Q4_K_M, write a model card.</text>
+  <text class="li" x="341" y="404">Every stage is plan-only until --go.</text>
+  <line class="arrow" x1="582" y1="343" x2="608" y2="343" marker-end="url(#g)"/>
+
+  <rect class="card" x="610" y="274" width="255" height="138" rx="10"/>
+  <text class="n" x="626" y="296">step 8</text>
+  <text class="hd" x="626" y="316">Serve it anywhere</text>
+  <text class="li" x="626" y="336">Published to a public Hugging Face repo, then</text>
+  <text class="li" x="626" y="353">pulled once by MODEL_URL onto the sqm-llm</text>
+  <text class="li" x="626" y="370">disk and checked against MODEL_SHA256.</text>
+  <text class="li" x="626" y="387">The same file runs on a laptop with llama.cpp</text>
+  <text class="li" x="626" y="404">or Ollama. Nothing is locked to Render.</text>
+  <line class="arrow" x1="867" y1="343" x2="893" y2="343" marker-end="url(#g)"/>
+
+  <rect x="895" y="274" width="265" height="138" rx="10" fill="#f8e5c9" stroke="#a8402f" stroke-width="2"/>
+  <text class="n" x="911" y="296">step 9</text>
+  <text class="hd" x="911" y="316">Evaluate the served file</text>
+  <text class="li" x="911" y="336">120 unseen contexts. Baseline is the same</text>
+  <text class="li" x="911" y="353">base model at the same quantization,</text>
+  <text class="li" x="911" y="370">3-shot prompted. Headline numbers run</text>
+  <text class="li" x="911" y="387">without grammar to measure the model,</text>
+  <text class="li" x="911" y="404">then with it to measure what ships.</text>
+
+  <!-- banner -->
+  <rect x="40" y="440" width="1120" height="84" rx="12" fill="#e6ead6" stroke="#436440" stroke-width="2"/>
+  <text class="bn" x="62" y="468">One source of truth, enforced by tests</text>
+  <text class="it" x="62" y="492">The same validator functions are the training-data filter, the serving gate and the eval metric. The system prompt is one file,</text>
+  <text class="it" x="62" y="514">hashed in prompts/HASHES.txt, so training and serving cannot drift apart without a test going red.</text>
+
+  <!-- status -->
+  <rect x="40" y="540" width="1120" height="84" rx="12" fill="#fdf3e2" stroke="#a8402f" stroke-width="2"/>
+  <text class="bn" x="62" y="568">Status, stated plainly</text>
+  <text class="it" x="62" y="592">The pipeline is built and tested end to end on free and mock backends. The paid teacher run, the fine-tune and the export have</text>
+  <text class="it" x="62" y="614">not been executed yet, so evals/ holds no numbers and this README claims no fine-tune result. Nothing here is estimated.</text>
+</svg>

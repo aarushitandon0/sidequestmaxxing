@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" role="img" aria-labelledby="t d">
+  <title id="t">What crosses the network, and what does not</title>
+  <desc id="d">On the left, things that never leave the device: the photo itself (the API has no image upload endpoint at all), the precise GPS position, the Gemma 3n verifier and the inference that runs it, and the field-test log kept in localStorage. On the right, everything the server ever receives: a random device UUID, coordinates rounded to three decimals, enum-only mood and persona with interests sanitized to keywords, the verification verdict of match, confidence and a short description, elapsed and visible seconds, place ids with public OpenStreetMap coordinates, and within_radius as a boolean after the check-in position is scored and discarded. A footer states the honest limit: this is not a fully offline app, the claim is that photos and exact movements stay on the device while the server sees an approximate area.</desc>
+  <style>
+    .lbl{font:600 20px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .hd{font:600 17px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .it{font:400 14px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .li{font:400 13px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#5e4b39}
+    .wire{font:600 13px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#774c2b}
+    .bul{font:700 14px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif}
+  </style>
+  <defs>
+    <marker id="w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#774c2b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="660" fill="#fbf2e7"/>
+  <text class="lbl" x="40" y="42">The privacy boundary is a property of the architecture, not a promise in a policy</text>
+
+  <!-- device -->
+  <rect x="40" y="66" width="440" height="458" rx="14" fill="#e6ead6" stroke="#436440" stroke-width="2.5"/>
+  <text class="hd" x="62" y="98">Never leaves your device</text>
+  <text class="li" x="62" y="120">There is no code path that could send these.</text>
+
+  <text class="bul" x="62" y="158" fill="#436440">1</text>
+  <text class="it" x="84" y="158">The photo</text>
+  <text class="li" x="84" y="178">Drawn to a canvas, handed to the model in memory.</text>
+  <text class="li" x="84" y="196">The API has no upload endpoint, no UploadFile, no</text>
+  <text class="li" x="84" y="214">multipart handler. All 11 endpoints are JSON only.</text>
+
+  <text class="bul" x="62" y="250" fill="#436440">2</text>
+  <text class="it" x="84" y="250">Where you actually are</text>
+  <text class="li" x="84" y="270">The browser rounds to 3 decimals before the first</text>
+  <text class="li" x="84" y="288">request. Nothing finer than that exists to send.</text>
+
+  <text class="bul" x="62" y="324" fill="#436440">3</text>
+  <text class="it" x="84" y="324">The verifier itself</text>
+  <text class="li" x="84" y="344">Gemma 3n weights sit in OPFS; MediaPipe runs them</text>
+  <text class="li" x="84" y="362">on WebGPU. Verified in airplane mode as proof.</text>
+
+  <text class="bul" x="62" y="398" fill="#436440">4</text>
+  <text class="it" x="84" y="398">The field-test log</text>
+  <text class="li" x="84" y="418">localStorage, capped at 500 rows, no network path at</text>
+  <text class="li" x="84" y="436">all. No coordinates, no place names, no quest titles,</text>
+  <text class="li" x="84" y="454">no wall-clock time. You export the CSV by hand.</text>
+  <text class="li" x="84" y="480">Clearable there, and wiped by "delete my data".</text>
+  <text class="li" x="62" y="508">Tests assert each of these, not comments.</text>
+
+  <!-- wire -->
+  <line stroke="#774c2b" stroke-width="2.5" stroke-dasharray="8 6" x1="520" y1="66" x2="520" y2="524"/>
+  <line stroke="#774c2b" stroke-width="2.5" x1="530" y1="200" x2="640" y2="200" marker-end="url(#w)"/>
+  <text class="wire" x="530" y="186">request</text>
+  <line stroke="#774c2b" stroke-width="2.5" x1="640" y1="300" x2="530" y2="300" marker-end="url(#w)"/>
+  <text class="wire" x="556" y="286">quest back</text>
+  <text class="wire" x="530" y="340">HTTPS only</text>
+  <text class="wire" x="530" y="360">32 KB body cap</text>
+  <text class="wire" x="530" y="380">CORS pinned to</text>
+  <text class="wire" x="530" y="400">one origin</text>
+  <text class="wire" x="530" y="430">Rate limited</text>
+  <text class="wire" x="530" y="450">per device</text>
+
+  <!-- server -->
+  <rect x="680" y="66" width="480" height="458" rx="14" fill="#f8e5c9" stroke="#d0a26d" stroke-width="2.5"/>
+  <text class="hd" x="702" y="98">Everything the server ever sees</text>
+  <text class="li" x="702" y="120">This is the whole list, not a summary of it.</text>
+
+  <text class="bul" x="702" y="152" fill="#774c2b">-</text>
+  <text class="it" x="722" y="152">A random UUID in X-Device-Id</text>
+  <text class="li" x="722" y="171">No email, no name, no password, no account. Hashed</text>
+  <text class="li" x="722" y="189">to 16 hex characters before it reaches a trace.</text>
+
+  <text class="bul" x="702" y="221" fill="#774c2b">-</text>
+  <text class="it" x="722" y="221">An area, never a point</text>
+  <text class="li" x="722" y="240">lat/lng at 3 decimals, about 110 m, re-rounded server</text>
+  <text class="li" x="722" y="258">side and never written to any collection.</text>
+
+  <text class="bul" x="702" y="290" fill="#774c2b">-</text>
+  <text class="it" x="722" y="290">Enums and sanitized keywords</text>
+  <text class="li" x="722" y="309">mood, persona, mode come from closed sets. Interests</text>
+  <text class="li" x="722" y="327">are stripped to letters, digits, spaces and hyphens.</text>
+
+  <text class="bul" x="702" y="359" fill="#774c2b">-</text>
+  <text class="it" x="722" y="359">The verdict, not the evidence</text>
+  <text class="li" x="722" y="378">{match, confidence, seen} plus elapsed_seconds and</text>
+  <text class="li" x="722" y="396">screen_seconds. "seen" is 12 words at most.</text>
+
+  <text class="bul" x="702" y="428" fill="#774c2b">-</text>
+  <text class="it" x="722" y="428">Place ids and public OSM coordinates</text>
+  <text class="li" x="722" y="447">Coordinates of a public park, not of a person. An</text>
+  <text class="li" x="722" y="465">optional check-in is scored into within_radius: true</text>
+  <text class="li" x="722" y="483">or false, and the position itself is thrown away.</text>
+  <text class="li" x="702" y="508">DELETE /v1/profile removes all of it.</text>
+
+  <!-- honest footer -->
+  <rect x="40" y="544" width="1120" height="92" rx="12" fill="#fdf3e2" stroke="#a8402f" stroke-width="2"/>
+  <text class="hd" x="62" y="572">The honest version of the claim</text>
+  <text class="it" x="62" y="596">This is not a fully offline app, and the README does not say it is. The deployed build needs the network to find places and to speak.</text>
+  <text class="it" x="62" y="620">What is true: photos and exact movements stay on your device, and the server sees an approximate area in order to find nearby places.</text>
+</svg>

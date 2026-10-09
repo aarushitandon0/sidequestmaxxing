@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 830" width="1200" height="830" role="img" aria-labelledby="t d">
+  <title id="t">Sidequestmaxxing system architecture</title>
+  <desc id="d">Three layers. On the player's device, a React PWA runs Walk Mode, a screen-time tracker, a local field log, and an on-device Gemma 3n photo verifier; photos never leave it. Over HTTPS with coordinates rounded to three decimals, the device talks to Render, which runs three services from one Blueprint: sqm-web (static site), sqm-api (FastAPI, holding the Context Builder, Scout, Quest Master client, validators V1 to V12, fallback engine, XP and memory, Chronicler and TTS proxy) and sqm-llm (a private llama.cpp server holding the fine-tuned Q4_K_M GGUF on a 10 GB disk). Below that sit hosted services, each with a fallback: MongoDB Atlas, Sentry, ElevenLabs, Open-Meteo and Overpass/OpenStreetMap.</desc>
+  <style>
+    .bg{fill:#fbf2e7}
+    .lbl{font:600 19px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .box{font:600 14px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .sub{font:400 12.5px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#5e4b39}
+    .li{font:400 13px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .wire{font:600 12.5px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#774c2b}
+    .card{fill:#fdf3e2;stroke:#d0a26d;stroke-width:1.5}
+    .arrow{stroke:#774c2b;stroke-width:2.5;fill:none}
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#774c2b"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="1200" height="830"/>
+
+  <!-- Device layer -->
+  <rect x="30" y="40" width="1140" height="190" rx="14" fill="#e4f0f3" stroke="#7fb3d5" stroke-width="2"/>
+  <text class="lbl" x="52" y="70">Your phone or laptop: installable PWA</text>
+  <text class="sub" x="470" y="70">no account, no login, anonymous device UUID</text>
+
+  <rect class="card" x="55" y="88" width="255" height="122" rx="10"/>
+  <text class="box" x="71" y="113">React 18 + Vite + TS</text>
+  <text class="li" x="71" y="137">Tailwind, TanStack Query</text>
+  <text class="li" x="71" y="158">Leaflet map, OSM tiles</text>
+  <text class="li" x="71" y="179">offline shell, quest cached</text>
+  <text class="li" x="71" y="200">7 categories, skill tree</text>
+
+  <rect class="card" x="330" y="88" width="255" height="122" rx="10"/>
+  <text class="box" x="346" y="113">Walk Mode</text>
+  <text class="li" x="346" y="137">near-black minimal screen</text>
+  <text class="li" x="346" y="158">state machine persisted</text>
+  <text class="li" x="346" y="179">Page Visibility tracker</text>
+  <text class="li" x="346" y="200">survives reload and signal loss</text>
+
+  <rect x="605" y="88" width="255" height="122" rx="10" fill="#e6ead6" stroke="#436440" stroke-width="2"/>
+  <text class="box" x="621" y="113">Camera to Gemma 3n</text>
+  <text class="li" x="621" y="137">MediaPipe tasks-genai</text>
+  <text class="li" x="621" y="158">WebGPU, model in OPFS</text>
+  <text class="li" x="621" y="179">verdict only leaves device</text>
+  <text class="li" x="621" y="200">checkin / honor fallbacks</text>
+
+  <rect class="card" x="880" y="88" width="255" height="122" rx="10"/>
+  <text class="box" x="896" y="113">Field log</text>
+  <text class="li" x="896" y="137">localStorage, 500 rows max</text>
+  <text class="li" x="896" y="158">no coords, no place names</text>
+  <text class="li" x="896" y="179">CSV export by hand</text>
+  <text class="li" x="896" y="200">feeds evals/field.md</text>
+
+  <!-- Boundary -->
+  <line class="arrow" x1="420" y1="232" x2="420" y2="296" marker-end="url(#a)"/>
+  <line class="arrow" x1="700" y1="296" x2="700" y2="232" marker-end="url(#a)"/>
+  <text class="wire" x="730" y="256">HTTPS, header X-Device-Id, lat/lng rounded to 3 decimals (about 110 m)</text>
+  <text class="wire" x="730" y="276">no photos, no raw GPS, no free text that reaches a prompt unsanitized</text>
+
+  <!-- Render layer -->
+  <rect x="30" y="300" width="1140" height="355" rx="14" fill="#e6ead6" stroke="#436440" stroke-width="2"/>
+  <text class="lbl" x="52" y="330">Render: three services from one render.yaml Blueprint</text>
+
+  <rect class="card" x="55" y="348" width="250" height="120" rx="10"/>
+  <text class="box" x="71" y="373">sqm-web</text>
+  <text class="sub" x="71" y="392">static site, free tier</text>
+  <text class="li" x="71" y="414">SPA rewrite to index.html</text>
+  <text class="li" x="71" y="435">CSP verified against dist/</text>
+  <text class="li" x="71" y="456">self-hosted fonts and WASM</text>
+
+  <rect class="card" x="330" y="348" width="490" height="278" rx="10"/>
+  <text class="box" x="348" y="373">sqm-api</text>
+  <text class="sub" x="348" y="392">FastAPI + Pydantic v2, Docker, Python 3.12, starter plan</text>
+  <text class="li" x="348" y="421">1. Context Builder: part of day, daylight left, weather, indoor_only</text>
+  <text class="li" x="348" y="446">2. Scout: geohash-5 block, Atlas $vectorSearch, haversine, safety filters</text>
+  <text class="li" x="348" y="471">3. Memory check: drop themes seen in the last 14 days</text>
+  <text class="li" x="348" y="496">4. Quest Master client: JSON-schema constrained call, 1 retry</text>
+  <text class="li" x="348" y="521">5. Validators V1 to V12, then the deterministic fallback engine</text>
+  <text class="li" x="348" y="546">6. Server assigns id, rarity and XP. The model never does.</text>
+  <text class="li" x="348" y="571">7. Chronicler: weekly recap, validators R1 to R7</text>
+  <text class="li" x="348" y="596">8. TTS proxy with a daily character budget</text>
+
+  <line class="arrow" x1="822" y1="487" x2="878" y2="487" marker-end="url(#a)"/>
+  <line class="arrow" x1="878" y1="513" x2="822" y2="513" marker-end="url(#a)"/>
+  <text class="wire" transform="translate(856,500) rotate(-90)" text-anchor="middle">private network</text>
+
+  <rect class="card" x="880" y="348" width="255" height="278" rx="10"/>
+  <text class="box" x="896" y="373">sqm-llm</text>
+  <text class="sub" x="896" y="392">private service, no public URL</text>
+  <text class="li" x="896" y="421">llama.cpp llama-server</text>
+  <text class="li" x="896" y="446">fine-tuned Q4_K_M GGUF</text>
+  <text class="li" x="896" y="471">10 GB persistent disk /data</text>
+  <text class="li" x="896" y="496">model fetched once, SHA-256</text>
+  <text class="li" x="896" y="521">CTX 2048, CPU threads</text>
+  <text class="li" x="896" y="546">response_format json_schema</text>
+  <text class="li" x="896" y="571">enable_thinking false</text>
+  <text class="li" x="896" y="596">kill it and quests still ship</text>
+
+  <!-- Hosted services -->
+  <line class="arrow" x1="575" y1="628" x2="575" y2="686" marker-end="url(#a)"/>
+  <rect x="30" y="690" width="1140" height="118" rx="14" fill="#f8e5c9" stroke="#d0a26d" stroke-width="2"/>
+  <text class="lbl" x="52" y="718">Hosted and open services. Every one of them has a fallback.</text>
+
+  <rect class="card" x="55" y="730" width="215" height="62" rx="9"/>
+  <text class="box" x="69" y="753">MongoDB Atlas</text>
+  <text class="li" x="69" y="775">places + vectors, memories</text>
+
+  <rect class="card" x="280" y="730" width="215" height="62" rx="9"/>
+  <text class="box" x="294" y="753">Sentry</text>
+  <text class="li" x="294" y="775">gen_ai agent traces</text>
+
+  <rect class="card" x="505" y="730" width="215" height="62" rx="9"/>
+  <text class="box" x="519" y="753">ElevenLabs</text>
+  <text class="li" x="519" y="775">voice, browser speech if down</text>
+
+  <rect class="card" x="730" y="730" width="215" height="62" rx="9"/>
+  <text class="box" x="744" y="753">Open-Meteo</text>
+  <text class="li" x="744" y="775">weather, offline solar maths</text>
+
+  <rect class="card" x="955" y="730" width="215" height="62" rx="9"/>
+  <text class="box" x="969" y="753">Overpass / OSM</text>
+  <text class="li" x="969" y="775">open world data, no API key</text>
+</svg>

@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" width="1200" height="430" role="img" aria-labelledby="t d">
+  <title id="t">The core loop, and where the screen is actually on</title>
+  <desc id="d">Six steps: open the app for about twenty seconds while it reads time, weather, daylight and mood; receive one quest grounded in a real nearby place; hear it spoken aloud; enter Walk Mode where the screen goes near-black and you leave; come back and take one photo that a model on your own phone checks; then claim XP, level-ups and a weekly chronicle. A timeline underneath shows the screen is on only at the start, for one photo, and at the reward, and off for the whole middle of the quest, which is the part that counts.</desc>
+  <style>
+    .lbl{font:600 20px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .hd{font:600 15px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .li{font:400 12px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#5e4b39}
+    .n{font:700 22px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#e8a33d}
+    .tl{font:600 12.5px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .tlw{font:600 12.5px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#fbe9cf}
+    .card{fill:#fdf3e2;stroke:#d0a26d;stroke-width:1.5}
+  </style>
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#774c2b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="430" fill="#fbf2e7"/>
+  <text class="lbl" x="40" y="40">Sidequestmaxxing: six steps, and the screen is the shortest part of them</text>
+
+  <rect class="card" x="40" y="62" width="172" height="182" rx="10"/>
+  <text class="n" x="58" y="92">1</text>
+  <text class="hd" x="58" y="116">Open</text>
+  <text class="li" x="58" y="138">About twenty seconds.</text>
+  <text class="li" x="58" y="155">It reads the time, the</text>
+  <text class="li" x="58" y="172">weather, how much</text>
+  <text class="li" x="58" y="189">daylight is left, how</text>
+  <text class="li" x="58" y="206">long you have and</text>
+  <text class="li" x="58" y="223">what mood you are in.</text>
+  <line stroke="#774c2b" stroke-width="2.5" x1="214" y1="153" x2="230" y2="153" marker-end="url(#g)"/>
+
+  <rect class="card" x="232" y="62" width="172" height="182" rx="10"/>
+  <text class="n" x="250" y="92">2</text>
+  <text class="hd" x="250" y="116">One quest</text>
+  <text class="li" x="250" y="138">Not a list. One quest,</text>
+  <text class="li" x="250" y="155">tied to a real place</text>
+  <text class="li" x="250" y="172">from OpenStreetMap</text>
+  <text class="li" x="250" y="189">that you can reach and</text>
+  <text class="li" x="250" y="206">get back from in the</text>
+  <text class="li" x="250" y="223">time you actually have.</text>
+  <line stroke="#774c2b" stroke-width="2.5" x1="406" y1="153" x2="422" y2="153" marker-end="url(#g)"/>
+
+  <rect class="card" x="424" y="62" width="172" height="182" rx="10"/>
+  <text class="n" x="442" y="92">3</text>
+  <text class="hd" x="442" y="116">Spoken briefing</text>
+  <text class="li" x="442" y="138">The Dungeon Master</text>
+  <text class="li" x="442" y="155">reads it to you in one</text>
+  <text class="li" x="442" y="172">of four voices, so you</text>
+  <text class="li" x="442" y="189">can start walking</text>
+  <text class="li" x="442" y="206">before you finish</text>
+  <text class="li" x="442" y="223">reading anything.</text>
+  <line stroke="#774c2b" stroke-width="2.5" x1="598" y1="153" x2="614" y2="153" marker-end="url(#g)"/>
+
+  <rect x="616" y="62" width="172" height="182" rx="10" fill="#1d2c22" stroke="#436440" stroke-width="2"/>
+  <text class="n" x="634" y="92">4</text>
+  <text class="hd" x="634" y="116" style="fill:#fbe9cf">Walk Mode</text>
+  <text class="li" x="634" y="138" style="fill:#cddcc4">The screen goes</text>
+  <text class="li" x="634" y="155" style="fill:#cddcc4">near-black. A timer, an</text>
+  <text class="li" x="634" y="172" style="fill:#cddcc4">"I'm back" button, a</text>
+  <text class="li" x="634" y="189" style="fill:#cddcc4">way to stop. Pocket the</text>
+  <text class="li" x="634" y="206" style="fill:#cddcc4">phone. This works with</text>
+  <text class="li" x="634" y="223" style="fill:#cddcc4">no signal at all.</text>
+  <line stroke="#774c2b" stroke-width="2.5" x1="790" y1="153" x2="806" y2="153" marker-end="url(#g)"/>
+
+  <rect x="808" y="62" width="172" height="182" rx="10" fill="#e6ead6" stroke="#436440" stroke-width="2"/>
+  <text class="n" x="826" y="92">5</text>
+  <text class="hd" x="826" y="116">One photo</text>
+  <text class="li" x="826" y="138">Checked by a model</text>
+  <text class="li" x="826" y="155">running on your own</text>
+  <text class="li" x="826" y="172">phone. The photo never</text>
+  <text class="li" x="826" y="189">leaves it. If your</text>
+  <text class="li" x="826" y="206">device cannot, check in</text>
+  <text class="li" x="826" y="223">or use honour mode.</text>
+  <line stroke="#774c2b" stroke-width="2.5" x1="982" y1="153" x2="998" y2="153" marker-end="url(#g)"/>
+
+  <rect class="card" x="1000" y="62" width="172" height="182" rx="10"/>
+  <text class="n" x="1018" y="92">6</text>
+  <text class="hd" x="1018" y="116">Reward</text>
+  <text class="li" x="1018" y="138">XP, level-ups across</text>
+  <text class="li" x="1018" y="155">seven skills, a streak,</text>
+  <text class="li" x="1018" y="172">your screen share for</text>
+  <text class="li" x="1018" y="189">that quest, and a</text>
+  <text class="li" x="1018" y="206">chronicle of the week</text>
+  <text class="li" x="1018" y="223">written on Sunday.</text>
+
+  <!-- timeline -->
+  <text class="hd" x="40" y="292">Screen state across one quest</text>
+  <rect x="40" y="306" width="1132" height="46" rx="8" fill="#1d2c22"/>
+  <rect x="40" y="306" width="230" height="46" rx="8" fill="#f6c453"/>
+  <rect x="845" y="306" width="95" height="46" fill="#f6c453"/>
+  <rect x="1050" y="306" width="122" height="46" rx="8" fill="#f6c453"/>
+  <text class="tl" x="60" y="334">screen on: pick and listen</text>
+  <text class="tlw" x="420" y="334">screen off: you are outside doing the thing</text>
+  <text class="tl" x="852" y="334">photo</text>
+  <text class="tl" x="1066" y="334">reward</text>
+  <text class="li" x="40" y="378">The app measures this itself with the Page Visibility API and sends only two integers: seconds elapsed and seconds visible. A quest</text>
+  <text class="li" x="40" y="398">whose screen share comes in under ten per cent earns twenty per cent more XP, so the game is paying you to put the phone away.</text>
+  <text class="li" x="40" y="418">The bar above is an illustration of the design, not a measurement. Real per-quest numbers come from the field log and land in evals/field.md.</text>
+</svg>

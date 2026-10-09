@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" role="img" aria-labelledby="t d">
+  <title id="t">What happens inside POST /v1/quests/generate</title>
+  <desc id="d">A request carrying coarse coordinates, minutes available, radius, mood, sanitized interests and a persona enters the API. The Context Builder adds local time, daylight left and weather, deciding indoor_only. The Scout searches a three by three block of geohash-5 cells with Atlas vector search, post-filters by haversine distance and safety and time rules, and caps candidates at three per place kind for a maximum of eight. A memory check drops themes done in the last fourteen days. The Quest Master, a fine-tuned open-weight model on llama.cpp, is called with JSON-schema constrained decoding. Its draft runs through validators V1 to V12; one failure triggers a single retry with the failure reasons appended, and a second failure, a timeout or an unreachable model hands over to a deterministic fallback engine. Only then does the server assign the id, rarity and XP, hydrate the place, store the quest and return it with an X-Quest-Source header saying llm or fallback.</desc>
+  <style>
+    .lbl{font:600 20px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .n{font:700 15px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#774c2b}
+    .box{font:600 15px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .li{font:400 13px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#5e4b39}
+    .vi{font:400 13.5px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#3b2a1e}
+    .wire{font:600 12.5px ui-sans-serif,system-ui,'Segoe UI',Roboto,sans-serif;fill:#a8402f}
+    .card{fill:#fdf3e2;stroke:#d0a26d;stroke-width:1.5}
+    .arrow{stroke:#436440;stroke-width:2.5;fill:none}
+    .alt{stroke:#a8402f;stroke-width:2.5;fill:none;stroke-dasharray:7 5}
+  </style>
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#436440"/>
+    </marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a8402f"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="900" fill="#fbf2e7"/>
+  <text class="lbl" x="60" y="48">One quest, step by step: POST /v1/quests/generate</text>
+  <text class="li" x="60" y="72">Server-authoritative. The model writes prose and picks a place from a list. It never decides an id, a rarity or a point of XP.</text>
+
+  <!-- step 1 -->
+  <rect class="card" x="60" y="96" width="560" height="72" rx="10"/>
+  <text class="n" x="76" y="122">1</text>
+  <text class="box" x="100" y="122">Request in</text>
+  <text class="li" x="100" y="144">lat/lng at 3 decimals, minutes 10 to 180, radius 300 to 6000 m,</text>
+  <text class="li" x="100" y="161">mood and persona from enums, interests sanitized to plain keywords</text>
+  <line class="arrow" x1="340" y1="170" x2="340" y2="190" marker-end="url(#g)"/>
+
+  <!-- step 2 -->
+  <rect class="card" x="60" y="192" width="560" height="72" rx="10"/>
+  <text class="n" x="76" y="218">2</text>
+  <text class="box" x="100" y="218">Context Builder (deterministic)</text>
+  <text class="li" x="100" y="240">part of day, weekday, daylight minutes left, Open-Meteo weather</text>
+  <text class="li" x="100" y="257">sets indoor_only on storm, rain, 38 C heat or under 35 min of daylight</text>
+  <line class="arrow" x1="340" y1="266" x2="340" y2="286" marker-end="url(#g)"/>
+
+  <!-- step 3 -->
+  <rect class="card" x="60" y="288" width="560" height="72" rx="10"/>
+  <text class="n" x="76" y="314">3</text>
+  <text class="box" x="100" y="314">Scout: find real places</text>
+  <text class="li" x="100" y="336">centre cell + 8 neighbours (geohash-5), Atlas $vectorSearch on 384-dim</text>
+  <text class="li" x="100" y="353">BGE-small vectors, haversine cut, safety and walk-time filters, 3 per kind</text>
+  <line class="arrow" x1="340" y1="362" x2="340" y2="382" marker-end="url(#g)"/>
+
+  <!-- step 4 -->
+  <rect class="card" x="60" y="384" width="560" height="72" rx="10"/>
+  <text class="n" x="76" y="410">4</text>
+  <text class="box" x="100" y="410">Memory check: do not repeat yourself</text>
+  <text class="li" x="100" y="432">$vectorSearch on memories filtered to this device and the last 14 days,</text>
+  <text class="li" x="100" y="449">drops places and themes already done. Result: 8 candidates at most.</text>
+  <line class="arrow" x1="340" y1="458" x2="340" y2="478" marker-end="url(#g)"/>
+
+  <!-- step 5 -->
+  <rect x="60" y="480" width="560" height="72" rx="10" fill="#e6ead6" stroke="#436440" stroke-width="2"/>
+  <text class="n" x="76" y="506">5</text>
+  <text class="box" x="100" y="506">Quest Master: the open-weight model</text>
+  <text class="li" x="100" y="528">byte-identical system prompt + context JSON + candidates, temp 0.8,</text>
+  <text class="li" x="100" y="545">top_p 0.95, max_tokens 380, timeout 25 s, json_schema constrained</text>
+  <line class="arrow" x1="340" y1="554" x2="340" y2="574" marker-end="url(#g)"/>
+
+  <!-- step 6 -->
+  <rect x="60" y="576" width="560" height="72" rx="10" fill="#f8e5c9" stroke="#a8402f" stroke-width="2"/>
+  <text class="n" x="76" y="602">6</text>
+  <text class="box" x="100" y="602">Validators: the only gate that matters</text>
+  <text class="li" x="100" y="624">Pure functions. The same code filters training data and scores the eval,</text>
+  <text class="li" x="100" y="641">so a rule can never be true in one place and false in another.</text>
+
+  <!-- step 7 -->
+  <line class="arrow" x1="340" y1="650" x2="340" y2="694" marker-end="url(#g)"/>
+  <text class="wire" x="352" y="676" style="fill:#436440">passes</text>
+  <rect class="card" x="60" y="696" width="560" height="72" rx="10"/>
+  <text class="n" x="76" y="722">7</text>
+  <text class="box" x="100" y="722">Server assigns the game state</text>
+  <text class="li" x="100" y="744">rarity from minutes and distance, XP from the published formula, uuid,</text>
+  <text class="li" x="100" y="761">place hydrated from the candidate it picked. Caps and streaks applied.</text>
+  <line class="arrow" x1="340" y1="770" x2="340" y2="790" marker-end="url(#g)"/>
+
+  <!-- step 8 -->
+  <rect class="card" x="60" y="792" width="560" height="72" rx="10"/>
+  <text class="n" x="76" y="818">8</text>
+  <text class="box" x="100" y="818">Store and answer</text>
+  <text class="li" x="100" y="840">written to quests with source llm or fallback and a request digest that</text>
+  <text class="li" x="100" y="857">holds no location. The X-Quest-Source header says which engine wrote it.</text>
+
+  <!-- validators detail -->
+  <line class="arrow" x1="622" y1="612" x2="658" y2="612" marker-end="url(#g)"/>
+  <rect x="660" y="300" width="480" height="312" rx="10" fill="#fdf3e2" stroke="#a8402f" stroke-width="2"/>
+  <text class="box" x="680" y="328">The twelve rules every quest must pass</text>
+  <text class="vi" x="680" y="356">V1   parses as JSON and matches the Pydantic schema</text>
+  <text class="vi" x="680" y="378">V2   place_id was copied from the candidate list, or is null</text>
+  <text class="vi" x="680" y="400">V3   est_minutes is at least 5 and fits the time you have</text>
+  <text class="vi" x="680" y="422">V4   banned-term lint, written to catch paraphrases</text>
+  <text class="vi" x="680" y="444">V5   safety_note is present and 10 to 140 characters</text>
+  <text class="vi" x="680" y="466">V6   a photo prompt is never about a person</text>
+  <text class="vi" x="680" y="488">V7   lengths, 70-word briefing cap, no emoji, no hashtags</text>
+  <text class="vi" x="680" y="510">V8   no URL, email address or phone number anywhere</text>
+  <text class="vi" x="680" y="532">V9   indoor_only weather means an indoor place or none</text>
+  <text class="vi" x="680" y="554">V10  a daylight-only place needs daylight actually left</text>
+  <text class="vi" x="680" y="576">V11  category is one of the seven in the enum</text>
+  <text class="vi" x="680" y="598">V12  not a near-duplicate of a quest from the last 14 days</text>
+
+  <!-- retry -->
+  <path class="alt" d="M900 300 L900 268 L340 268" marker-end="url(#r)"/>
+  <text class="wire" x="640" y="260">first failure: one retry, failure reasons appended</text>
+
+  <!-- fallback -->
+  <line class="alt" x1="900" y1="614" x2="900" y2="654" marker-end="url(#r)"/>
+  <text class="wire" x="914" y="640">twice, timed out, or model unreachable</text>
+  <rect x="660" y="656" width="480" height="150" rx="10" fill="#f8e5c9" stroke="#a8402f" stroke-width="2"/>
+  <text class="box" x="680" y="684">Fallback engine (no network, no model)</text>
+  <text class="li" x="680" y="708">Deterministic templates per place kind and category, flavoured by</text>
+  <text class="li" x="680" y="727">persona. Property-tested to always pass V1 to V11, and tested against</text>
+  <text class="li" x="680" y="746">all 104 red-team contexts. Same seed in, same quest out.</text>
+  <text class="li" x="680" y="770">The player is never shown an error. /v1/quests/generate is required</text>
+  <text class="li" x="680" y="789">to succeed with the whole model service switched off.</text>
+  <line class="alt" x1="658" y1="732" x2="624" y2="732" marker-end="url(#r)"/>
+</svg>
