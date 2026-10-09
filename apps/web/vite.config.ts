@@ -99,5 +99,9 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     exclude: ['e2e/**', 'node_modules/**'],
+    // The Story page renders every scene synchronously; on a loaded machine that one render has
+    // come in just over Vitest's 5 s default while 13 jsdom environments compete. The test isn't
+    // slow because it waits for anything — raise the ceiling rather than lose the assertions.
+    testTimeout: 20_000,
   },
 })
