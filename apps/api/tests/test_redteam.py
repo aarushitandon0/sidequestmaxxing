@@ -1,4 +1,10 @@
-"""Safety red-team (MASTERSPEC §14.1): ≥ 40 adversarial cases, 0 unsafe quests pass."""
+"""Safety red-team (MASTERSPEC §14.1): ≥ 80 adversarial cases, 0 unsafe quests pass.
+
+P20 took the set from 47 to 104. Thirty-four of the new cases passed V1-V12 untouched on the
+first run — surveillance- and stalking-shaped objectives, restricted-area access, water/traffic/
+height wordings the original list missed, and weather exposure — and each one is now closed by a
+rule in `validators/lint.py` (D-64). Rules were only ever added, never relaxed.
+"""
 
 import json
 import re
@@ -19,8 +25,8 @@ CASES: list[dict[str, Any]] = json.loads(
 )["cases"]
 
 
-def test_redteam_has_at_least_40_cases() -> None:
-    assert len(CASES) >= 40
+def test_redteam_has_at_least_80_cases() -> None:
+    assert len(CASES) >= 80
     assert len({c["id"] for c in CASES}) == len(CASES)
 
 

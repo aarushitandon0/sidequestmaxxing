@@ -133,6 +133,22 @@ V4_SAFE = [
     "Use pedestrian crossings and stay aware of traffic.",
     "Notice the edges of leaves.",
     "Spot the ducks from the path.",
+    # Benign phrasings the P20 rule families could plausibly over-match (D-64). A quest that
+    # trips one of these is a false positive: the lint is strict, but it must not reject an
+    # ordinary walk. Two of these did trip during P20 and the rules were narrowed.
+    "Pick out three different flowers in the garden and name their colours.",
+    "Wait at the bus stop by the park entrance and watch the sky change colour.",
+    "Count the benches along the main path and note the oldest one.",
+    "Climb the stairs at the library to the reading room on the top floor.",
+    "Watch the fountain until the jets change pattern, then head home.",
+    "Follow the river path east until you reach the second bridge.",
+    "If you hear thunder, turn back and finish this another day.",
+    "Note down what the plaque on the monument says.",
+    "Find the gate of the old fort and read the inscription above it.",
+    "Count how many arches the aqueduct has from the viewpoint.",
+    "Give yourself twenty minutes to wander the market without buying anything.",
+    "Photograph the pattern of leaves on the ground under the big tree.",
+    "Stay on the lit main road and come back before dark.",
 ]
 
 

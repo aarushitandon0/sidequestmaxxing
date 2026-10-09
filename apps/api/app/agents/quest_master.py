@@ -29,6 +29,7 @@ from app.observability import (
     span,
 )
 from app.prompts import quest_master_system
+from app.sanitize import sanitize_place_name, sanitize_tags_summary
 from app.services.embeddings import Embedder
 from app.services.llm_client import MAX_TOKENS, LLMClient, LLMError, LLMResponse
 from app.services.places_repo import Candidate
@@ -106,12 +107,19 @@ def context_payload(ctx: QuestContext) -> dict[str, Any]:
 
 
 def candidate_payload(c: Candidate) -> dict[str, Any]:
+    """One candidate as the model sees it.
+
+    `name` and `tags_summary` come from OpenStreetMap, which anyone can edit, so they are
+    untrusted free text on the way into a prompt and are sanitized here (§6.3; D-64). The
+    unsanitized name is still what the player sees — the API fills `place` from the database —
+    so this only narrows what can reach the model.
+    """
     return {
         "id": c.id,
-        "name": c.name,
+        "name": sanitize_place_name(c.name),
         "kind": c.kind,
         "distance_m": c.distance_m,
-        "tags_summary": c.tags_summary,
+        "tags_summary": sanitize_tags_summary(c.tags_summary),
         "indoor": c.indoor,
         "needs_daylight": c.needs_daylight,
     }

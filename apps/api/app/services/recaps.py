@@ -12,6 +12,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import DuplicateKeyError
 
 from app.models.enums import Persona
+from app.sanitize import sanitize_place_name
 from app.services.db import Doc
 from app.validators.recap import RecapCompletion
 
@@ -40,13 +41,20 @@ async def week_completions(db: AsyncDatabase[Doc], device_id: str, start: date) 
 
 
 def to_recap_completion(doc: Doc) -> RecapCompletion:
+    """One stored completion as the Chronicler sees it.
+
+    `place_name` traces back to an OpenStreetMap name, so it is sanitized here rather than in
+    the prompt builder: R6 ("named places come from the input") compares the model's output
+    against these same strings, and the two must not drift apart (D-64).
+    """
     day = ""
     if isinstance(doc.get("local_date"), str):
         day = date.fromisoformat(doc["local_date"]).strftime("%A")
+    raw_place = doc.get("place_name") or None
     return RecapCompletion(
         title=str(doc.get("title") or "A side quest"),
         category=doc["category"],
-        place_name=doc.get("place_name") or None,
+        place_name=sanitize_place_name(str(raw_place)) if raw_place else None,
         minutes_outside=round(int(doc.get("elapsed_seconds", 0)) / 60),
         day=day,
     )
