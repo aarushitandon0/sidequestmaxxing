@@ -160,6 +160,7 @@ Trade-off: A gives the best quests but is the slowest on CPU (more weights to st
 | D-65 | 2026-10-10 | P20 closeout: the three open hardening items are applied. (1) **CSP** on `sqm-web` allow-listing only what the built bundle loads — one exception, `'unsafe-inline'` in `style-src` for Leaflet's runtime styles; `'wasm-unsafe-eval'` in `script-src` for the MediaPipe verifier; `img-src` for `tile.openstreetmap.org`; `connect-src` for the API and Sentry ingest (**not** Open-Meteo — weather is server-side). Verified, not reasoned: `npm run check:csp` parses the policy out of `render.yaml`, serves the real `dist/` under it and drives Chromium through all 11 routes — 0 violations, and `/map` must mount Leaflet and load real tiles so a blank page cannot pass. The verifier, the Sentry transport and the model download still need a device/deploy. (2) **`X-Frame-Options: DENY`** + `frame-ancestors 'none'`. (3) **`/docs`, `/redoc`, `/openapi.json` withdrawn when `ENV == production`** — information disclosure, not a vulnerability, so the schema stays on in dev/test and `app.openapi()` still works. Post-deploy: the real API host must replace `https://sqm-api.onrender.com` in `connect-src`. | `docs/SECURITY.md` §2.1; `apps/web/scripts/check_csp.mjs` run output. |
 | D-66 | 2026-10-10 | P21 field-test tooling. The field numbers for the post are measured **client-side and kept client-side**: the app appends one row per finished quest to `localStorage` (`sqm.field.v1`, capped at 500, deduped by quest id so the offline retry cannot double-count) with date/category/rarity/estimated-elapsed-screen seconds/verification method/source/voice, and **no** coordinates, place names, titles or wall-clock times. The alternative — a server-side export endpoint — was rejected: the API deliberately stores neither `elapsed_seconds` nor the quest source in a way the client may read back, and adding an endpoint would have created a new data surface for numbers that are only needed once. The player exports a CSV from the unlinked `/settings/export`; `scripts/summarize_field.py` reads one or more CSVs and writes `evals/field.md` in the first-markdown-table shape `build_story_data.ts` already parses, so the story page's "Receipts" scene picks it up with no hand-typed numbers. `source` (llm/fallback) reaches the client as the additive `X-Quest-Source` response header on `/v1/quests/generate`, exposed through CORS — a header, not a body field, so `QuestDraft`/`Quest` stay exactly what the model may write. Rounding is half-up (a published 4.5% must read as 5%, not Python's banker's 4%). | `apps/web/src/lib/fieldLog.ts`; `apps/web/src/pages/Export.tsx`; `scripts/summarize_field.py`; `apps/api/tests/test_summarize_field.py`. |
 | D-67 | 2026-10-10 | P22 diagrams are hand-authored inline SVG committed under `docs/img/`, not generated images and not Mermaid. | They render on GitHub and in the DEV post with no build step, stay diffable in review, and their `<title>`/`<desc>` plus real `<text>` nodes are readable by a screen reader. Each was rendered in Chromium and inspected before commit; a presentation `fill=` on `<text>` loses to a CSS class rule, which is how the dark Walk Mode card shipped with invisible text until the overrides moved to inline `style=`. |
+| D-68 | 2026-10-10 | **Project licence: MIT** (`LICENSE` at the repo root, copyright Aarushi Tandon). Reason: the simplest permissive grant, consistent with the upstreams this project leans on (Apache-2.0 base model, SIL OFL fonts, ODbL map data) and with the "why open" argument in the README; it imposes nothing on anyone who forks the repo for the challenge. **Scope:** the code in this repository only. Map data (ODbL), fonts (SIL OFL), Gemma 3n (Gemma Terms of Use), the tuned model artefact (`training/configs/export.json` carries `apache-2.0` from the Qwen card, still **[VERIFY]** on the model page before publishing) and the partner services keep their own terms. The README's "no grant is implied" paragraph is replaced by a pointer to `LICENSE`. | PROJECTPLAN §11 submission checklist. |
 
 ## Verified Facts
 
@@ -280,3 +281,24 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   field test to produce `evals/field.md`, gate G2 on a WebGPU device, and the first deploy (the
   real API host still has to replace the placeholder in the CSP `connect-src`).
 - **Next:** LICENSE, first Render deploy, then the DEV post.
+
+### 2026-10-10 — Session 11 (licence, story copy)
+
+- **Did:** added the MIT `LICENSE` (D-68) and replaced the README's "a project licence has not been
+  chosen yet" paragraph with a pointer to it, scoped so the third-party terms above it still stand.
+  Stripped the em dashes from the story page's visible copy (`apps/web/src/story/Story.tsx`): seven
+  spots now use a colon, a comma or a full stop. The two remaining `—` in that file are a code
+  comment and a docstring, which no player sees, and the `'—'` in the receipts table is the
+  empty-cell glyph for a metric the eval files do not carry, not prose.
+- **Not done, and not faked:** `evals/` is still empty, so the README and the story page still show
+  no fine-tune result, no latency table and no field numbers. Both of those need something this
+  session cannot produce: P17 is a paid Tinker run (CLAUDE.md requires asking before spending), and
+  `evals/field.md` needs one real quest walked outside and exported from `/settings/export`. No
+  number was written by hand anywhere.
+- **Verified this session:** web `typecheck` and `lint` clean; 119 vitest tests across 15 files
+  passed. The story e2e spec asserts headings are visible, not their wording, so the copy change
+  does not touch it.
+- **Still open:** P17 (no SFT run, so no tuned model and no eval numbers), one real field test for
+  `evals/field.md`, gate G2 on a WebGPU device, and the first Render deploy (the real API host still
+  has to replace the placeholder in the CSP `connect-src`).
+- **Next:** first Render deploy, then the DEV post.

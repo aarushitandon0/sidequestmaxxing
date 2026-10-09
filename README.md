@@ -1052,8 +1052,9 @@ redistribute Gemma weights.
 Search), ElevenLabs (voice), Sentry (agent tracing), Tinker (fine-tuning), Hugging Face (model
 hosting).
 
-A project licence has not been chosen yet. Until one is added, no open-source licence grant is
-implied by this repository being public.
+**This project** is released under the MIT License. The full text is in [`LICENSE`](LICENSE).
+That grant covers the code in this repository only. Map data, fonts, models and partner
+services keep their own terms, listed above.
 
 ---
 
