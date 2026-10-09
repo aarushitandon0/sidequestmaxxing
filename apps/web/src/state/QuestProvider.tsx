@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react'
 
 import { api, ApiError } from '../lib/api'
+import { recordCompletion } from '../lib/fieldLog'
 import { IDLE, isQuestRun, questReducer, type QuestRun } from '../lib/questMachine'
 import { HEARTBEAT_MS } from '../lib/screenTime'
 import { readJson, writeJson } from '../lib/storage'
@@ -35,6 +36,11 @@ function load(): QuestRun {
  */
 export function QuestProvider({ children }: { children: ReactNode }) {
   const [run, dispatch] = useReducer(questReducer, undefined, load)
+  // The offline-retry effect completes a quest from a closure that predates the current run.
+  const runRef = useRef(run)
+  useEffect(() => {
+    runRef.current = run
+  }, [run])
 
   useEffect(() => {
     dispatch({ type: 'restore', now: Date.now(), visible: isVisible() })
@@ -71,7 +77,10 @@ export function QuestProvider({ children }: { children: ReactNode }) {
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return
       try {
         const result = await api.completeQuest(questId, pending)
-        if (!cancelled) dispatch({ type: 'complete', result, now: Date.now() })
+        if (!cancelled) {
+          recordCompletion(runRef.current, result)
+          dispatch({ type: 'complete', result, now: Date.now() })
+        }
       } catch (err) {
         if (!cancelled && err instanceof ApiError && !err.isNetwork) dispatch({ type: 'unqueue' })
       }
@@ -94,10 +103,11 @@ export function QuestProvider({ children }: { children: ReactNode }) {
   const startVerify = useCallback(() => dispatch({ type: 'verify', now: Date.now() }), [])
   const back = useCallback(() => dispatch({ type: 'back' }), [])
   const queue = useCallback((payload: CompletionRequest) => dispatch({ type: 'queue', payload }), [])
-  const complete = useCallback(
-    (result: CompletionResult) => dispatch({ type: 'complete', result, now: Date.now() }),
-    [],
-  )
+  const complete = useCallback((result: CompletionResult) => {
+    // Field log first: the reducer stops the screen timer and clears `pending`.
+    recordCompletion(runRef.current, result)
+    dispatch({ type: 'complete', result, now: Date.now() })
+  }, [])
   const reset = useCallback(() => dispatch({ type: 'reset' }), [])
 
   const value = useMemo(

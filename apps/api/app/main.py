@@ -17,6 +17,7 @@ from app.ratelimit import limiter
 from app.routers import places, profile, quests, recap, tts
 from app.services.db import close_client, get_database, ping
 from app.services.llm_health import llm_status
+from app.services.quest_flow import QUEST_SOURCE_HEADER
 
 
 @asynccontextmanager
@@ -53,6 +54,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=[settings.web_origin],
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type", DEVICE_HEADER],
+        # The browser can only read a non-safelisted response header if it is exposed.
+        expose_headers=[QUEST_SOURCE_HEADER],
         max_age=600,
     )
     app.add_middleware(AccessLogMiddleware)

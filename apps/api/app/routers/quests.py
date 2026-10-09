@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
@@ -28,7 +28,7 @@ from app.services.db import Doc
 from app.services.embeddings import Embedder
 from app.services.llm_client import LLMClient
 from app.services.memories_repo import upsert_memory
-from app.services.quest_flow import GenerateDeps, generate_quest
+from app.services.quest_flow import QUEST_SOURCE_HEADER, GenerateDeps, generate_quest
 from app.services.quests_repo import QuestStatus, get_quest, transition
 from app.services.weather import WeatherClient
 from app.validators.core import quest_memory_text
@@ -91,6 +91,7 @@ async def _move(
 @limiter.limit(GENERATE_LIMIT)
 async def generate(
     request: Request,
+    response: Response,
     body: QuestRequest,
     device_id: DeviceId,
     db: Db,
@@ -107,9 +108,12 @@ async def generate(
         fallback_on_llm_error=request.app.state.settings.fallback_on_llm_error,
     )
     try:
-        return await generate_quest(body, device_id, deps, now=now)
+        generated = await generate_quest(body, device_id, deps, now=now)
     except LLMUnavailableError as exc:
         raise ApiError(503, "llm_unavailable", "The Dungeon Master is resting.") from exc
+    # Out-of-band so the quest schema stays exactly what the model may write (MASTERSPEC §6.1).
+    response.headers[QUEST_SOURCE_HEADER] = generated.source
+    return generated.quest
 
 
 @router.post("/{quest_id}/accept", response_model=QuestState)

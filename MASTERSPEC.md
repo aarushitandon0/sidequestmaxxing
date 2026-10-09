@@ -51,6 +51,10 @@ Collect and report **real** numbers only. Never invent or round up.
 - Fine-tune vs baseline deltas (section 10).
 - Latency p50/p95 and estimated cost per quest on Render.
 - Number of friends/testers who completed ≥ 1 quest (even 3–5 is a great story).
+- Source of the field numbers (P21): the app logs one row per finished quest **in the browser
+  only** (no coordinates, no place names), the player exports it as CSV from `/settings/export`,
+  and `scripts/summarize_field.py` turns the CSV(s) into `evals/field.md`. Field numbers in the
+  README/post must come from that file, never from a hand count.
 
 ---
 
@@ -216,7 +220,7 @@ Base: `/v1`. JSON only (except TTS audio). Header `X-Device-Id: <uuid v4>` requi
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/healthz` | Liveness (+ `llm: ok|down`, `db: ok|down`) — no secrets |
-| POST | `/v1/quests/generate` | Create a quest |
+| POST | `/v1/quests/generate` | Create a quest (response header `X-Quest-Source: llm\|fallback`, exposed via CORS, so a field test can count fallback quests; **not** part of the quest body) |
 | POST | `/v1/quests/{id}/accept` | Start quest (sets timer, `accepted_at`) |
 | POST | `/v1/quests/{id}/complete` | Submit verification result |
 | POST | `/v1/quests/{id}/skip` | Skip (no penalty; used for memory) |
@@ -380,6 +384,7 @@ Same fine-tuned model (multi-task SFT: ~85% quest, ~15% recap). **System prompt*
 - Photos never leave the device. API has no upload endpoint for images.
 - `X-Device-Id` is a random UUID; no email, no name. "Delete my data" button → `DELETE /v1/profile`.
 - Logs: no coordinates, no free text; Sentry `send_default_pii=False`, scrub `lat/lng`, `X-Device-Id` hashed.
+- Field-test log (P21): kept in `localStorage` on the player's own device, capped at 500 rows, never sent anywhere. It holds date (local, no time), category, rarity, estimated/elapsed/screen seconds, verification method, quest source and the voice flag — **no coordinates, no place names, no titles, no photos**. Exported only by a deliberate tap on `/settings/export`; clearable there and wiped by `clearAppStorage()` on "delete my data".
 - Be accurate in claims: **"photos and exact movements stay on your device; the server sees an approximate area to find nearby places."** Do NOT claim "fully offline" for the Render deployment.
 
 ### 9.4 Security (MUST)
@@ -448,7 +453,7 @@ Held-out 120 contexts. Run **baseline** (same base model, same Q4_K_M quantizati
 8. **Chronicle**: weekly story; Listen button; share as text.
 9. **Map (optional)**: Leaflet with the quest place pin; OSM attribution.
 
-Routes (D-49): `/` and `/story` landing; app at `/home`, `/onboarding`, `/quest`, `/walk`, `/verify`, `/reward`, `/profile`, `/chronicle`, `/settings`, `/map`; PWA `start_url` `/home`. Visual design = the project design template (D-45).
+Routes (D-49): `/` and `/story` landing; app at `/home`, `/onboarding`, `/quest`, `/walk`, `/verify`, `/reward`, `/profile`, `/chronicle`, `/settings`, `/map`; plus the hidden `/settings/export` (field-test CSV, P21 — reachable by URL only, never linked); PWA `start_url` `/home`. Visual design = the project design template (D-45).
 
 ### 11.2 Non-functional
 - Installable PWA, manifest, icons, offline shell. Quest data cached after generation so Walk Mode works with no signal.

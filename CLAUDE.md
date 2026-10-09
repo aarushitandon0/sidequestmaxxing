@@ -41,6 +41,7 @@ bash scripts/smoke_test.sh                  # hits healthz + generate against AP
 python scripts/bench_llm.py --base-url http://localhost:8080 --n 20   # gate G1 latency → evals/
 python scripts/scan_secrets.py              # secret scan: tracked files + every commit
 python scripts/scan_secrets.py --tree       # working tree only (fast)
+python scripts/summarize_field.py <csv...>  # field-test CSV (/settings/export) → evals/field.md
 
 # Training (repo root, API venv; see training/README.md)
 python -m pytest -q training/tests        # pipeline tests, free backends

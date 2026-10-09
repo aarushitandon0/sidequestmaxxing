@@ -17,7 +17,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
 from app.agents.context_builder import build_context
-from app.agents.quest_master import QuestMasterInput, run_quest_master
+from app.agents.quest_master import QuestMasterInput, Source, run_quest_master
 from app.agents.scout import scout
 from app.errors import db_unavailable
 from app.models.quest import PlaceRef, Quest, QuestDraft
@@ -32,6 +32,22 @@ from app.services.quests_repo import insert_quest, new_quest_doc
 from app.services.weather import WeatherClient
 
 log = logging.getLogger("sqm.quests")
+
+#: Response header on POST /v1/quests/generate: "llm" or "fallback" (MASTERSPEC §6.1).
+QUEST_SOURCE_HEADER = "X-Quest-Source"
+
+
+@dataclass(frozen=True)
+class Generated:
+    """A generated quest plus how it was produced.
+
+    `source` is server-only bookkeeping, not part of the quest schema: the router returns it
+    as the `X-Quest-Source` response header so a field test can count fallback quests
+    (MASTERSPEC §6.1) without the client ever seeing model internals.
+    """
+
+    quest: Quest
+    source: Source
 
 
 @dataclass(frozen=True)
@@ -61,7 +77,7 @@ def hydrate(draft: QuestDraft, candidates: list[Candidate], quest_id: str) -> Qu
 
 async def generate_quest(
     req: QuestRequest, device_id: str, deps: GenerateDeps, now: datetime | None = None
-) -> Quest:
+) -> Generated:
     now = now or datetime.now(UTC)
     name_transaction("quests.generate")
 
@@ -107,4 +123,4 @@ async def generate_quest(
     except PyMongoError as exc:
         log.warning("quest save failed", extra={"error_type": type(exc).__name__})
         raise db_unavailable() from exc
-    return quest
+    return Generated(quest=quest, source=result.source)

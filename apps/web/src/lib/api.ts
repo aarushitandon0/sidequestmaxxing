@@ -6,6 +6,7 @@ import type {
   Profile,
   Quest,
   QuestRequest,
+  QuestSource,
   QuestState,
   SettingsUpdate,
   WeeklyRecap,
@@ -29,7 +30,15 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** The X-Quest-Source response header; exposed through CORS by the API (MASTERSPEC §6.1). */
+export const QUEST_SOURCE_HEADER = 'X-Quest-Source'
+
+const questSource = (res: Response): QuestSource | null => {
+  const v = res.headers.get(QUEST_SOURCE_HEADER)
+  return v === 'llm' || v === 'fallback' ? v : null
+}
+
+async function request<T>(path: string, init: RequestInit = {}, onResponse?: (res: Response) => void): Promise<T> {
   let res: Response
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
@@ -55,6 +64,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     }
     throw new ApiError(res.status, code, message)
   }
+  onResponse?.(res)
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
 }
@@ -68,7 +78,17 @@ const post = <T>(path: string, body?: unknown) =>
  */
 export const api = {
   health: () => request<Health>('/healthz'),
-  generateQuest: (body: QuestRequest) => post<Quest>('/v1/quests/generate', body),
+  generateQuest: async (body: QuestRequest): Promise<Quest> => {
+    let source: QuestSource | null = null
+    const quest = await request<Quest>(
+      '/v1/quests/generate',
+      { method: 'POST', body: JSON.stringify(body) },
+      (res) => {
+        source = questSource(res)
+      },
+    )
+    return { ...quest, source }
+  },
   acceptQuest: (id: string) => post<QuestState>(`/v1/quests/${encodeURIComponent(id)}/accept`),
   skipQuest: (id: string) => post<QuestState>(`/v1/quests/${encodeURIComponent(id)}/skip`),
   completeQuest: (id: string, body: CompletionRequest) =>

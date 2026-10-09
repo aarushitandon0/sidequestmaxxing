@@ -12,6 +12,8 @@ export type Mood = 'curious' | 'tired' | 'restless' | 'social' | 'calm' | 'adven
 export type Persona = 'chill' | 'dramatic' | 'nature_nerd' | 'sarcastic'
 export type VerificationMethod = 'photo' | 'checkin' | 'honor'
 export type Rarity = 'common' | 'rare' | 'legendary'
+/** How a quest was produced. From the X-Quest-Source response header, never the body. */
+export type QuestSource = 'llm' | 'fallback'
 export type QuestStatus = 'offered' | 'accepted' | 'completed' | 'skipped' | 'expired'
 
 export const CATEGORIES: readonly Category[] = [
@@ -48,6 +50,8 @@ export interface Quest {
   xp: number
   distance_m: number | null
   place: PlaceRef | null
+  /** Set by the client from the X-Quest-Source header; absent on quests stored before P21. */
+  source?: QuestSource | null
 }
 
 export interface QuestRequest {

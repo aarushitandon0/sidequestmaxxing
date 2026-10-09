@@ -122,6 +122,31 @@ def test_generate_llm_path_adds_server_fields() -> None:
     assert "18.52049" not in stored and "73.85612" not in stored and "18.52," not in stored
 
 
+def test_generate_reports_its_source_in_a_header_not_the_body() -> None:
+    """The field-test CSV needs llm vs fallback (P21); the quest schema must not grow a field."""
+    llm, _ = mock_llm(json.dumps(LLM_QUEST))
+    res = Harness(llm).generate()
+    assert res.headers["X-Quest-Source"] == "llm"
+    assert "source" not in res.json()
+
+    res = Harness(None).generate()  # no LLM configured -> fallback engine
+    assert res.headers["X-Quest-Source"] == "fallback"
+    assert "source" not in res.json()
+
+
+def test_the_source_header_is_readable_by_the_browser() -> None:
+    """A custom response header is invisible to fetch() unless CORS exposes it."""
+    h = Harness(None)
+    res = h.client.post(
+        "/v1/quests/generate",
+        json=REQUEST,
+        headers={"X-Device-Id": h.device, "Origin": "http://localhost:5173"},
+    )
+    assert res.status_code == 200
+    exposed = res.headers["access-control-expose-headers"].lower()
+    assert "x-quest-source" in exposed
+
+
 def test_llm_cannot_set_server_fields() -> None:
     sneaky = {**LLM_QUEST, "xp": 9999, "rarity": "legendary"}
     llm, _ = mock_llm(json.dumps(sneaky), json.dumps(sneaky))

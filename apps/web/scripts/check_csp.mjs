@@ -27,7 +27,7 @@ const ORIGIN = `http://localhost:${PORT}`
 const API_IN_YAML = 'https://sqm-api.onrender.com'
 const API_LOCAL = 'http://localhost:8000'
 
-const ROUTES = ['/', '/onboarding', '/home', '/quest', '/walk', '/verify', '/reward', '/profile', '/chronicle', '/settings', '/map']
+const ROUTES = ['/', '/onboarding', '/home', '/quest', '/walk', '/verify', '/reward', '/profile', '/chronicle', '/settings', '/settings/export', '/map']
 
 /**
  * An accepted quest, seeded into localStorage before the first paint. Without it /quest,
@@ -59,6 +59,21 @@ const SEED_QUEST = {
   result: null,
   finishedAt: null,
 }
+
+/** One field-log row, so /settings/export renders its table and offers the blob download. */
+const SEED_FIELD = [{
+  quest_id: '6f1c2c1e-0000-4000-8000-000000000001',
+  date: new Date().toISOString().slice(0, 10),
+  category: 'naturalist',
+  rarity: 'common',
+  est_minutes: 15,
+  elapsed_seconds: 1200,
+  screen_seconds: 60,
+  screen_share: 0.05,
+  verification_method: 'photo',
+  source: 'llm',
+  voice: true,
+}]
 
 const TYPES = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
@@ -113,9 +128,10 @@ try {
     page.on('console', (m) => {
       if (/Content Security Policy|Refused to/i.test(m.text())) violations.push({ route, from: 'console', detail: m.text() })
     })
-    await page.addInitScript((seed) => {
+    await page.addInitScript(({ seed, field }) => {
       try {
         window.localStorage.setItem('sqm.quest.v1', JSON.stringify(seed))
+        window.localStorage.setItem('sqm.field.v1', JSON.stringify(field))
         window.localStorage.setItem('sqm.device_id', JSON.stringify('6f1c2c1e-0000-4000-8000-0000000000de'))
       } catch {
         // Private-mode storage; the empty states still exercise the app shell.
@@ -124,7 +140,7 @@ try {
       document.addEventListener('securitypolicyviolation', (e) => {
         window.__csp.push(`${e.violatedDirective} blocked ${e.blockedURI} (${e.sourceFile ?? 'inline'})`)
       })
-    }, SEED_QUEST)
+    }, { seed: SEED_QUEST, field: SEED_FIELD })
     await page.goto(`${ORIGIN}${route}`, { waitUntil: 'load' })
     // Let lazy chunks, the SW registration, fonts and map tiles settle.
     await page.waitForTimeout(2500)
@@ -133,6 +149,12 @@ try {
     // pass: every route has to have rendered real content, and /map has to have booted Leaflet.
     const rendered = await page.evaluate(() => (document.getElementById('root')?.innerText ?? '').trim().length)
     if (rendered < 40) violations.push({ route, from: 'render', detail: `rendered only ${rendered} chars of text` })
+    // A blob: CSV download is the one thing this page does that a CSP can break.
+    if (route === '/settings/export') {
+      await page.getByRole('button', { name: /Download CSV/ }).click()
+      await page.waitForTimeout(500)
+      for (const detail of await page.evaluate(() => window.__csp ?? [])) violations.push({ route, from: 'event', detail })
+    }
     if (route === '/map') {
       if ((await page.locator('.leaflet-container').count()) === 0) {
         violations.push({ route, from: 'render', detail: 'no .leaflet-container — the map never mounted' })
@@ -141,10 +163,10 @@ try {
       // breaks: no <img.leaflet-tile> means img-src is wrong, violation event or not.
       const tiles = await page.locator('img.leaflet-tile').count()
       if (tiles === 0) violations.push({ route, from: 'render', detail: 'no map tiles loaded — check img-src' })
-      else console.log(`${''.padEnd(13)} ${tiles} OSM tiles loaded under the policy`)
+      else console.log(`${''.padEnd(17)} ${tiles} OSM tiles loaded under the policy`)
     }
     await page.close()
-    console.log(`${route.padEnd(13)} ${violations.some((v) => v.route === route) ? 'FAIL' : `ok (${rendered} chars)`}`)
+    console.log(`${route.padEnd(17)} ${violations.some((v) => v.route === route) ? 'FAIL' : `ok (${rendered} chars)`}`)
   }
 } finally {
   await browser.close()

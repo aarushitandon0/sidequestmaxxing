@@ -8,7 +8,7 @@ Generated results only — **never hand-edit numbers** (CLAUDE.md). Files here a
 | `results.json`, `results.md` | `training/eval.py report` (P16) | story page "Receipts" scene, post |
 | `raw/<arm>.jsonl`, `raw/<arm>.meta.json` | `training/eval.py run` | input to `report` |
 | `human_pairs.csv` (+ `_key.json`) | `training/eval.py report` | you fill `preferred` (A/B); re-run `report` |
-| `field.md` | field-test tooling (P21) | story page "Receipts" scene |
+| `field.md` | `scripts/summarize_field.py` (P21), from a CSV exported at `/settings/export` | story page "Receipts" scene, post |
 
 Story page contract (`apps/web/scripts/build_story_data.ts`):
 - `results.json`: `{"n": <held-out size>, "metrics": [{"label": str, "baseline": num|str|null, "tuned": num|str|null, "unit"?: str}]}`

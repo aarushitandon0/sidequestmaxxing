@@ -158,12 +158,16 @@ than a vulnerability; the demo and the write-up are served by a non-production i
 | Prompts/completions never attached to traces | `test_chat_spans_carry_the_required_gen_ai_attributes` asserts `gen_ai.input.messages` / `output.messages` are absent | PASS |
 | Free text never reaches a prompt raw | Interests via `sanitize_interests`; notes stored but never prompted; OSM names via `sanitize_place_name` (fixed in this pass) | PASS |
 | `DELETE /v1/profile` exists | In the route table | PASS |
+| Field-test log stays on the device and carries no location | P21: `localStorage` only, capped at 500 rows, no network path. `fieldLog.test.ts` asserts the stored entry contains no coordinate, place name, quest title or wall-clock time, and that the CSV has no quest id; the export is a deliberate tap on the unlinked `/settings/export`, clearable there and wiped by `clearAppStorage()` | PASS |
 
 ### Deliberate exceptions, stated plainly
 
 - A completion's **`note`** is stored as the player typed it (sanitized for invisibles and
   clamped to 200 chars). That is by design — it is their own journal entry — and it is never put
   in a prompt and never logged.
+- The **field-test log** records the local calendar date of each completion. A date with no
+  time is the coarsest thing that still lets `summarize_field.py` count days with a quest; it
+  stays on the player's device either way.
 - **Place** coordinates are stored and returned. They are public OpenStreetMap data about a
   public place, not a record of where the player went.
 - The README claim must stay "photos and exact movements stay on your device; the server sees an

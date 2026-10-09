@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import { AppShell, ErrorBoundary, OfflineBanner, UpdatePrompt } from './components/Shell'
 import { Chronicle } from './pages/Chronicle'
+import { Export } from './pages/Export'
 import { Home } from './pages/Home'
 import { MapPage } from './pages/MapPage'
 import { NotFound } from './pages/NotFound'
@@ -51,6 +52,8 @@ export function AppRoutes() {
         <Route path="/profile" element={shell(<Profile />)} />
         <Route path="/chronicle" element={shell(<Chronicle />)} />
         <Route path="/settings" element={shell(<Settings />)} />
+        {/* Hidden field-test tooling (P21): reachable by URL only, never linked. */}
+        <Route path="/settings/export" element={shell(<Export />)} />
         <Route path="/map" element={shell(<MapPage />)} />
         {GemmaSpike ? <Route path="/spike/gemma" element={<GemmaSpike />} /> : null}
         <Route path="*" element={<NotFound />} />
