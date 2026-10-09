@@ -15,6 +15,11 @@
   initial-value: 1;
 }
 
+/*
+ * Layout. Every scene is a tall section with a sticky, viewport-tall stage (MASTERSPEC
+ * §11.4), mobile-first: the content inside each stage is sized to fit a phone in portrait,
+ * because a sticky stage taller than the screen loses its own bottom edge.
+ */
 .scene {
   --progress: 1;
   position: relative;
@@ -30,9 +35,17 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 4.5rem 1rem 2rem;
+  padding: 3.25rem 1rem 1.5rem;
   /* Keep each stage's layout and paint to itself: one scene's frame can't dirty the page. */
   contain: layout paint;
+  /* So the backdrop can sit at z-index:-1 behind in-flow content without being positioned
+     itself — which keeps .walk-dim anchored to the whole stage, as it was. */
+  isolation: isolate;
+}
+@media (min-width: 640px) {
+  .scene-stage {
+    padding: 4.5rem 1rem 2rem;
+  }
 }
 .scene-short {
   min-height: auto;
@@ -43,6 +56,59 @@
   padding-top: 3rem;
   padding-bottom: 3rem;
   contain: none;
+}
+
+/* The world behind every scene (same SVG as the hero), plus the veil the text sits on. */
+.scene-world {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  /* Gentle parallax: the land drifts a little slower than the page. */
+  transform: translate3d(0, calc((var(--progress) - 0.5) * -4%), 0);
+  will-change: transform;
+}
+/* Short scenes don't travel, so their world holds still. */
+.scene-short .scene-world {
+  transform: none;
+  will-change: auto;
+}
+.scene-world svg {
+  display: block;
+}
+.scene-veil {
+  position: absolute;
+  inset: 0;
+  /* Bright under the content, clear at the edges so the scenery fills the empty space, and
+     page-coloured at the seams so consecutive scenes read as one landscape. */
+  background:
+    radial-gradient(
+      88% 68% at 50% 52%,
+      rgb(251 242 231 / 0.9),
+      rgb(251 242 231 / 0.44) 68%,
+      rgb(251 242 231 / 0.2) 100%
+    ),
+    linear-gradient(
+      180deg,
+      var(--color-page) 0%,
+      rgb(251 242 231 / 0) 20%,
+      rgb(251 242 231 / 0) 80%,
+      var(--color-page) 100%
+    );
+}
+/* Each scene frames a different stretch of the same world. The scale always exceeds
+   1 + 2 x the shift, so no pan can drag a bare edge into the stage. */
+.world-a {
+  transform: scale(1.18) translate3d(-4%, 2%, 0);
+}
+.world-b {
+  transform: scale(1.26) translate3d(7%, 3%, 0);
+}
+.world-c {
+  transform: scale(1.3) translate3d(-8%, 1%, 0);
+}
+.world-d {
+  transform: scale(1.34) translate3d(5%, 4%, 0);
 }
 
 /* 1. Hero */
@@ -75,7 +141,9 @@
 
 /* 4. Walk Mode: the UI fades to near-black, the route draws itself, pins pop */
 .walk-dim {
-  opacity: calc(var(--progress) * 0.86);
+  /* Starts already dark enough for the scene's light text to read against the scenery,
+     then deepens to the same near-black it always ended on. */
+  opacity: calc(0.3 + var(--progress) * 0.56);
   will-change: opacity;
 }
 .route {
@@ -108,7 +176,128 @@
   will-change: transform;
 }
 
+/* ------------------------------------------------------------------ Interaction
+ * Hover/focus affordances, scoped to the story so the rest of the app is untouched.
+ * Everything here is transform/opacity/box-shadow only. */
+.scene .parchment,
+#try .reveal {
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 180ms ease;
+}
+.scene .parchment:hover,
+#try .reveal:hover,
+#try .reveal:focus-within {
+  transform: translate3d(0, -4px, 0);
+  box-shadow:
+    inset 0 0 0 3px rgb(253 243 226 / 0.7),
+    inset 0 0 24px rgb(208 162 109 / 0.25),
+    0 3px 0 var(--color-edge),
+    0 18px 34px rgb(59 42 30 / 0.26);
+}
+#try .reveal img {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+#try .reveal:hover img {
+  transform: scale(1.06);
+}
+.scene .chip {
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease;
+}
+.scene .chip:hover {
+  transform: translate3d(0, -2px, 0);
+  background: var(--color-parchment-light);
+}
+/* Skill medallions lift and brighten under the cursor. */
+#skills .branch > span:first-child {
+  transition:
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 200ms ease;
+}
+#skills .branch:hover > span:first-child {
+  transform: translate3d(0, -5px, 0) scale(1.07);
+  filter: drop-shadow(0 8px 12px rgb(59 42 30 / 0.3));
+}
+/* Receipts rows pick up the parchment highlight on hover. */
+#receipts tbody tr {
+  transition: background-color 150ms ease;
+}
+#receipts tbody tr:hover {
+  background: rgb(253 243 226 / 0.8);
+}
+
+/* A thin gold rail across the top, filled by the page's own scroll position.
+ * Pure CSS scroll-driven animation: no listener, no main-thread work. */
+.scroll-rail {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  height: 4px;
+  pointer-events: none;
+}
+.scroll-rail > span {
+  display: block;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--color-moss), var(--color-gold) 70%, var(--color-gold-light));
+  box-shadow: 0 1px 6px rgb(59 42 30 / 0.35);
+}
+
+/* The hero's "there is more below" cue. */
+.scroll-cue {
+  position: absolute;
+  bottom: 1.1rem;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  margin-left: -1.3rem;
+  color: var(--color-wood-text);
+  background: linear-gradient(180deg, rgb(43 61 47 / 0.9), rgb(29 44 34 / 0.9));
+  border: 2px solid #4a2f17;
+  border-radius: 999px;
+  box-shadow: 0 3px 0 #2a1b0d, 0 10px 20px rgb(21 26 22 / 0.35);
+}
+
 /* CSS scroll-driven reveal where supported (progressive enhancement). */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .scroll-rail > span {
+      animation: rail linear both;
+      animation-timeline: scroll(root block);
+      will-change: transform;
+    }
+    @keyframes rail {
+      from {
+        transform: scaleX(0);
+      }
+      to {
+        transform: scaleX(1);
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-cue {
+    animation: cue 2.1s ease-in-out infinite;
+  }
+  @keyframes cue {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(6px);
+    }
+  }
+}
+
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .reveal {
@@ -131,15 +320,16 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scene {
+  .scene,
+  .scene-short {
     --progress: 1 !important;
     min-height: auto;
   }
-  .scene-stage {
+  .scene-stage,
+  .scene-short .scene-stage {
     position: static;
     min-height: auto;
-    padding-top: 3rem;
-    padding-bottom: 3rem;
+    padding: 3rem 1rem;
     contain: none;
   }
   /* Nothing animates here, so drop every compositing hint. */
@@ -153,7 +343,17 @@
   .blocked,
   .branch,
   .reveal,
+  .scene-world,
   #hero .cloud {
     will-change: auto;
+  }
+  .scene-world {
+    transform: none;
+  }
+  .scroll-rail {
+    display: none;
+  }
+  .scroll-cue {
+    animation: none;
   }
 }

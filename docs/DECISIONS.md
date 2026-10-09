@@ -302,3 +302,34 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   `evals/field.md`, gate G2 on a WebGPU device, and the first Render deploy (the real API host still
   has to replace the placeholder in the CSP `connect-src`).
 - **Next:** first Render deploy, then the DEV post.
+
+### 2026-10-10 — Session 12 (scrollytelling performance and scenery)
+
+- **Did:** reworked the motion layer of the story page only (`apps/web/src/story/Story.tsx`,
+  `apps/web/src/story/story.css`); no copy, palette, component or API change. The nine scenes each
+  ran their own scroll + resize listener and wrote `--progress` raw, and scene 6 called `setState`
+  once per frame, re-rendering seven medallions at scroll rate. They now share one listener and one
+  rAF loop that eases each scene's progress with a ~70 ms time constant, skips writes under 0.001,
+  parks itself when everything has settled, and quantises the React callback to twelfths. Animated
+  nodes declare `will-change` and use `translate3d`; `--progress` is registered with `@property`;
+  stages get `contain: layout paint`. Scene span went 130vh → 170vh, so the beats play out over
+  ~0.7 screens instead of ~0.3.
+- **Scenery (D-69):** every scene now sits on the hero's `World` SVG behind a veil that is bright
+  under the text and clear at the edges, page-coloured at the seams so the scenes read as one
+  landscape; four `world-*` classes frame a different stretch of it, and it parallaxes with
+  `--progress`. Walk Mode uses the `dusk` tone. Added hover/focus lift on parchment cards, chips,
+  medallions and receipt rows, a scroll cue in the hero, and a top progress rail driven by
+  `animation-timeline: scroll()` (absent where unsupported — no listener either way).
+- **Two real bugs fixed, both pre-existing:** Walk Mode's dim was `progress * 0.86`, so its
+  light-on-dark text was unreadable for the first half of the scene (now `0.3 + progress * 0.56`,
+  same end state); and on phones every tall scene overflowed its sticky stage and lost 54–358 px
+  off the bottom. MASTERSPEC §11.4 requires sticky scenes mobile-first at 360 px, so the fix was to
+  size the content down in portrait (smaller phone mocks, tighter type and spacing, the decorative
+  quest art hidden below `sm`) rather than drop the pinning.
+- **Verified this session:** `lint`, `typecheck`, 119 vitest tests, 10 Playwright e2e tests and
+  `check:csp` (12 routes) all pass; measured in headless Chromium that every scene fits its stage
+  with no clipping at 412×823, 390×844, 360×740 and 1280×800, with no horizontal scroll.
+- **Known limit, not faked:** at 360×740 and above nothing clips; at 360×640 (a short, older
+  phone) four scenes still overflow by 29–81 px. That is better than before this session but not
+  zero, and fixing it properly means cutting scene copy, which is a content decision.
+- **Still open:** unchanged — P17, one real field test, gate G2, and the first Render deploy.

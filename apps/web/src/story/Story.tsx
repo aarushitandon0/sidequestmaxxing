@@ -150,6 +150,8 @@ function useSceneProgress(onProgress?: (p: number) => void) {
     return () => {
       io.disconnect()
       live.delete(state)
+      // Hand the scene back to the stylesheet's --progress: 1 (its final, readable state).
+      el.style.removeProperty('--progress')
       if (!live.size) {
         listen(false)
         if (frame) cancelAnimationFrame(frame)
@@ -160,12 +162,20 @@ function useSceneProgress(onProgress?: (p: number) => void) {
   return ref
 }
 
+/**
+ * A scene sits on the same world as the hero: the World SVG fills the stage behind the
+ * content (parallaxed by --progress), under a veil that is bright where the text sits and
+ * clear at the seams, so the scenery reads as one continuous landscape down the page.
+ * `world` only shifts/scales that SVG, so each scene looks out at a different stretch of it.
+ */
 function Scene({
   id,
   label,
   children,
   short = false,
   className = '',
+  tone = 'day',
+  world = '',
   onProgress,
 }: {
   id: string
@@ -173,12 +183,18 @@ function Scene({
   children: ReactNode
   short?: boolean
   className?: string
+  tone?: 'day' | 'dusk'
+  world?: string
   onProgress?: (p: number) => void
 }) {
   const ref = useSceneProgress(onProgress)
   return (
     <section ref={ref} id={id} aria-labelledby={`${id}-title`} data-scene={id} className={`scene ${short ? 'scene-short' : ''} ${className}`}>
       <div className="scene-stage">
+        <div className="scene-world" aria-hidden="true">
+          <World tone={tone} className={`h-full w-full ${world}`} />
+          <div className="scene-veil" />
+        </div>
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </div>
       <span className="sr-only">{label}</span>
@@ -254,6 +270,11 @@ function Hero() {
           />
         </div>
       </div>
+      <span className="scroll-cue" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+          <path d="M5 8l7 7 7-7" />
+        </svg>
+      </span>
     </section>
   )
 }
@@ -261,9 +282,9 @@ function Hero() {
 /* ---------------------------------------------------------------- 2. The problem */
 function Problem() {
   return (
-    <Scene id="problem" label="Scene 2 of 9">
+    <Scene id="problem" label="Scene 2 of 9" world="world-a">
       <div className="grid items-center gap-8 md:grid-cols-2">
-        <div className="mx-auto h-[420px] w-[220px] overflow-hidden rounded-[2.2rem] border-8 border-ink bg-parchment-light p-2" aria-hidden="true">
+        <div className="mx-auto h-[232px] w-[140px] overflow-hidden rounded-[1.8rem] border-[6px] border-ink bg-parchment-light p-2 sm:h-[420px] sm:w-[220px] sm:rounded-[2.2rem] sm:border-8" aria-hidden="true">
           <div className="feed flex flex-col gap-2">
             {Array.from({ length: 14 }, (_, i) => (
               <div key={i} className="rounded-xl bg-parchment-deep p-2">
@@ -275,15 +296,15 @@ function Problem() {
           </div>
         </div>
         <div>
-          <h2 id="problem-title" className="hand-title text-4xl">
+          <h2 id="problem-title" className="hand-title text-3xl sm:text-4xl">
             Most “outdoor” apps are maps you stare at.
           </h2>
-          <p className="mt-3 text-xl">
+          <p className="mt-2 text-lg sm:mt-3 sm:text-xl">
             This week's challenge rule shaped everything: <strong>the screen must be the shortest part</strong> of the
             experience. So Sidequestmaxxing is designed backwards: minimum screen, maximum time outside.
           </p>
-          <div className="mt-5">
-            <p className="flex items-center gap-2 text-lg">
+          <div className="mt-4 sm:mt-5">
+            <p className="flex items-center gap-2 text-base sm:text-lg">
               <PhoneIcon /> Screen time while scrolling a feed
             </p>
             <div className="xp-track mt-1 h-4">
@@ -316,25 +337,25 @@ function DungeonMaster() {
     })
   }
   return (
-    <Scene id="dm" label="Scene 3 of 9">
-      <h2 id="dm-title" className="hand-title text-center text-4xl">
+    <Scene id="dm" label="Scene 3 of 9" world="world-b">
+      <h2 id="dm-title" className="hand-title text-center text-3xl sm:text-4xl">
         Your Dungeon Master writes one quest for a real place near you.
       </h2>
-      <p className="mx-auto mt-2 max-w-2xl text-center text-lg text-ink-soft">
+      <p className="mx-auto mt-2 max-w-2xl text-center text-base text-ink-soft sm:text-lg">
         An open-weight model picks from real nearby places and writes a short, safe, spoken briefing. Example quest:
       </p>
-      <div className="parchment mx-auto mt-5 grid max-w-3xl gap-4 p-4 sm:grid-cols-[150px_1fr]">
-        <img src={ART.sceneRiver} alt="" loading="lazy" decoding="async" className="beat h-40 w-full rounded-xl object-cover sm:h-full" style={at(0)} />
+      <div className="parchment mx-auto mt-4 grid max-w-3xl gap-3 p-3 sm:mt-5 sm:gap-4 sm:p-4 sm:grid-cols-[150px_1fr]">
+        <img src={ART.sceneRiver} alt="" loading="lazy" decoding="async" className="beat hidden w-full rounded-xl object-cover sm:block sm:h-full" style={at(0)} />
         <div>
-          <p className="beat text-3xl" style={at(0.1)}>The Riverbank Riddle</p>
+          <p className="beat text-2xl sm:text-3xl" style={at(0.1)}>The Riverbank Riddle</p>
           <ul className="beat mt-1 flex flex-wrap gap-2" style={at(0.25)}>
             <li className="chip">Nature</li>
             <li className="chip">Observation</li>
             <li className="chip">15 min</li>
           </ul>
-          <div className="beat mt-3 flex items-start gap-3" style={at(0.4)}>
-            <img src={PORTRAIT.chill} alt="" loading="lazy" decoding="async" className="h-14 w-14 rounded-full border-2 border-edge" />
-            <div className="bubble flex-1">
+          <div className="beat mt-2 flex items-start gap-2 sm:mt-3 sm:gap-3" style={at(0.4)}>
+            <img src={PORTRAIT.chill} alt="" loading="lazy" decoding="async" className="h-11 w-11 rounded-full border-2 border-edge sm:h-14 sm:w-14" />
+            <div className="bubble flex-1 max-sm:px-3 max-sm:py-2">
               <p>{DEMO_BRIEFING}</p>
               {canSpeak() ? (
                 <div className="mt-1 flex items-center gap-3 text-moss">
@@ -348,7 +369,7 @@ function DungeonMaster() {
               ) : null}
             </div>
           </div>
-          <p className="beat mt-3 rounded-xl bg-parchment-light p-2" style={at(0.6)}>
+          <p className="beat mt-2 rounded-xl bg-parchment-light p-2 text-base sm:mt-3 sm:text-lg" style={at(0.6)}>
             <strong>Safety:</strong> stay on the path and keep away from the water's edge.
           </p>
         </div>
@@ -360,7 +381,7 @@ function DungeonMaster() {
 /* ---------------------------------------------------------------- 4. Walk Mode */
 function WalkScene() {
   return (
-    <Scene id="walk" label="Scene 4 of 9" className="text-parchment-light">
+    <Scene id="walk" label="Scene 4 of 9" tone="dusk" world="world-c" className="text-parchment-light">
       <div className="walk-dim pointer-events-none absolute inset-0 bg-forest-deep" aria-hidden="true" />
       <div className="relative grid items-center gap-8 md:grid-cols-2">
         <svg viewBox="0 0 400 300" className="w-full rounded-3xl border-4 border-edge bg-parchment" role="img"
@@ -380,12 +401,12 @@ function WalkScene() {
           </g>
         </svg>
         <div>
-          <h2 id="walk-title" className="text-4xl">Walk Mode: the screen goes dark.</h2>
-          <p className="mt-3 text-xl">
+          <h2 id="walk-title" className="text-3xl sm:text-4xl">Walk Mode: the screen goes dark.</h2>
+          <p className="mt-2 text-lg sm:mt-3 sm:text-xl">
             Accept, pocket the phone, go. The Dungeon Master briefs you out loud; Walk Mode is a near-black screen with a
             timer and one big “I'm back” button. No wake lock, no map to stare at.
           </p>
-          <p className="mt-3 flex items-center gap-2 text-lg">
+          <p className="mt-3 flex items-center gap-2 text-base sm:text-lg">
             <HeadphonesIcon /> Your quest is live. Keep your phone in your pocket and explore.
           </p>
         </div>
@@ -397,31 +418,31 @@ function WalkScene() {
 /* ---------------------------------------------------------------- 5. Verified on your device */
 function VerifiedScene() {
   return (
-    <Scene id="verified" label="Scene 5 of 9">
+    <Scene id="verified" label="Scene 5 of 9" world="world-d">
       <div className="grid items-center gap-8 md:grid-cols-2">
-        <div className="relative mx-auto h-[380px] w-[220px]" aria-hidden="true">
-          <div className="absolute inset-0 rounded-[2.2rem] border-8 border-ink bg-forest" />
-          <div className="absolute inset-3 overflow-hidden rounded-[1.6rem]">
+        <div className="relative mx-auto h-[230px] w-[135px] sm:h-[380px] sm:w-[220px]" aria-hidden="true">
+          <div className="absolute inset-0 rounded-[1.8rem] border-[6px] border-ink bg-forest sm:rounded-[2.2rem] sm:border-8" />
+          <div className="absolute inset-2 overflow-hidden rounded-[1.3rem] sm:inset-3 sm:rounded-[1.6rem]">
             <img src={ART.sceneVerify} alt="" loading="lazy" decoding="async" className="photo-in h-full w-full object-cover" />
           </div>
-          <div className="blocked absolute -top-6 -right-16 flex flex-col items-center text-berry">
+          <div className="blocked absolute -top-4 -right-12 flex flex-col items-center text-berry sm:-top-6 sm:-right-16">
             <span className="rounded-full bg-parchment-light p-2 text-3xl shadow"><XIcon /></span>
             <span className="text-sm">upload</span>
           </div>
         </div>
         <div>
-          <h2 id="verified-title" className="hand-title text-4xl">
+          <h2 id="verified-title" className="hand-title text-3xl sm:text-4xl">
             Verified on your device.
           </h2>
-          <p className="mt-3 text-xl">
+          <p className="mt-2 text-lg sm:mt-3 sm:text-xl">
             Take one photo. An open Gemma model running in your browser checks it, and the photo never leaves your phone.
             There is no upload endpoint at all.
           </p>
-          <p className="mt-3 rounded-xl border-2 border-edge bg-parchment-light p-3 text-lg">
+          <p className="mt-3 rounded-xl border-2 border-edge bg-parchment-light p-2 text-base sm:p-3 sm:text-lg">
             <LockIcon className="mr-1 inline" />
             Photos and exact movements stay on your device; the server sees an approximate area to find nearby places.
           </p>
-          <p className="mt-2 text-ink-soft">
+          <p className="mt-2 text-sm text-ink-soft sm:text-base">
             No WebGPU or no download? Check in at the place, or use honor mode for half XP. (It's single-player, so a
             spoofed check only fools yourself.)
           </p>
@@ -437,19 +458,19 @@ const EXAMPLE_LEVELS = [2, 3, 1, 1, 2, 1, 2] // illustrative animation only — 
 function SkillScene() {
   const [p, setP] = useState(1)
   return (
-    <Scene id="skills" label="Scene 6 of 9" onProgress={setP}>
-      <h2 id="skills-title" className="hand-title text-center text-4xl">
+    <Scene id="skills" label="Scene 6 of 9" world="world-b" onProgress={setP}>
+      <h2 id="skills-title" className="hand-title text-center text-3xl sm:text-4xl">
         Grow seven skills by living them.
       </h2>
-      <p className="text-center text-lg text-ink-soft">
+      <p className="text-center text-base text-ink-soft sm:text-lg">
         XP, levels and rarity are computed by the server, never by the model. (Levels shown are an example.)
       </p>
-      <ul className="parchment mx-auto mt-6 grid max-w-3xl grid-cols-2 gap-5 p-6 sm:grid-cols-4">
+      <ul className="parchment mx-auto mt-4 grid max-w-3xl grid-cols-4 gap-3 p-3 sm:mt-6 sm:gap-5 sm:p-6">
         {CATEGORIES.map((c, i) => (
           <li key={c} className="branch flex flex-col items-center text-center" style={at(i * 0.09)}>
             <Medallion category={c} size={64} />
-            <span className="mt-1 text-lg">{SKILL_LABEL[c]}</span>
-            <span className="text-ink-soft">Lv. {Math.round(EXAMPLE_LEVELS[i]! * Math.min(1, p * 1.4))}</span>
+            <span className="mt-1 text-sm leading-tight sm:text-lg">{SKILL_LABEL[c]}</span>
+            <span className="text-sm text-ink-soft sm:text-base">Lv. {Math.round(EXAMPLE_LEVELS[i]! * Math.min(1, p * 1.4))}</span>
           </li>
         ))}
       </ul>
@@ -461,7 +482,7 @@ function SkillScene() {
 export function Receipts({ data }: { data: StoryData }) {
   if (!data.results && !data.field) return null
   return (
-    <Scene id="receipts" label="Scene 7 of 9" short>
+    <Scene id="receipts" label="Scene 7 of 9" short world="world-a">
       <h2 id="receipts-title" className="hand-title text-center text-4xl">
         Receipts
       </h2>
@@ -528,7 +549,7 @@ const HOSTED = [
 
 function OpenClosed() {
   return (
-    <Scene id="open" label="Scene 8 of 9" short>
+    <Scene id="open" label="Scene 8 of 9" short world="world-d">
       <h2 id="open-title" className="hand-title text-center text-4xl">
         What's open, and what's hosted
       </h2>
@@ -569,7 +590,7 @@ const STEPS = [
 
 function TryIt() {
   return (
-    <Scene id="try" label="Scene 9 of 9" short>
+    <Scene id="try" label="Scene 9 of 9" short tone="dusk" world="world-c">
       <div className="rounded-3xl bg-parchment-light/60 p-4">
         <h2 id="try-title" className="hand-title text-3xl">
           The Quest Unfolds <span className="text-lg text-ink-soft">A little story, told as you go.</span>
@@ -630,6 +651,9 @@ export default function Story() {
       <a href="#problem" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded focus:bg-parchment focus:p-2">
         Skip the intro
       </a>
+      <div className="scroll-rail" aria-hidden="true">
+        <span />
+      </div>
       <main>
         <Hero />
         <Problem />
