@@ -1,14 +1,26 @@
 /*
  * Story page (MASTERSPEC §11.4). Each scene is a tall section with a sticky stage; JS sets
- * --progress (0..1) per scene from an IntersectionObserver-gated scroll listener. The DEFAULT
- * is --progress: 1 (final state) so the page is fully readable without JS, and reduced motion
- * renders every scene static and stacked. Animations use transform/opacity (plus the route
- * line's stroke-dashoffset, as specified).
+ * --progress (0..1) per scene from one shared, IntersectionObserver-gated scroll loop, eased
+ * so coarse wheel steps read as motion rather than jumps. The DEFAULT is --progress: 1 (final
+ * state) so the page is fully readable without JS, and reduced motion renders every scene
+ * static and stacked. Animations use transform/opacity (plus the route line's
+ * stroke-dashoffset, as specified) and are composited — each animated node declares
+ * will-change so a scroll frame repaints the node, not the scene.
  */
+
+/* Typed so --progress interpolates as a number and never falls back to a parse error. */
+@property --progress {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
 .scene {
   --progress: 1;
   position: relative;
-  min-height: 130vh;
+  /* Stage is 100dvh, so the scroll span is the remainder: ~0.7 screens of travel per scene.
+     The old 130vh left only ~30vh, which fired every beat almost at once. */
+  min-height: 170vh;
 }
 .scene-stage {
   position: sticky;
@@ -19,6 +31,8 @@
   justify-content: center;
   overflow: hidden;
   padding: 4.5rem 1rem 2rem;
+  /* Keep each stage's layout and paint to itself: one scene's frame can't dirty the page. */
+  contain: layout paint;
 }
 .scene-short {
   min-height: auto;
@@ -28,68 +42,85 @@
   min-height: auto;
   padding-top: 3rem;
   padding-bottom: 3rem;
+  contain: none;
 }
 
 /* 1. Hero */
 .hero-art {
   box-shadow: 0 24px 48px rgb(21 26 22 / 0.35);
 }
+/* The drifting clouds are the only always-on animation; give them their own layer. */
+#hero .cloud {
+  will-change: translate;
+}
 
 /* 2. The problem */
 .feed {
-  transform: translateY(calc(var(--progress) * -46%));
+  transform: translate3d(0, calc(var(--progress) * -46%), 0);
+  will-change: transform;
 }
 .screen-bar {
   transform-origin: left center;
   transform: scaleX(var(--progress));
+  will-change: transform;
 }
 
-/* 3. The Dungeon Master: beats appear in order */
+/* 3. The Dungeon Master: beats appear in order, each easing out of its own 14px rise. */
 .beat {
-  opacity: clamp(0, calc((var(--progress) - var(--at)) * 6), 1);
-  transform: translateY(calc((1 - clamp(0, calc((var(--progress) - var(--at)) * 6), 1)) * 12px));
+  --t: clamp(0, calc((var(--progress) - var(--at)) * 6), 1);
+  opacity: var(--t);
+  transform: translate3d(0, calc((1 - var(--t)) * 14px), 0);
+  will-change: transform, opacity;
 }
 
 /* 4. Walk Mode: the UI fades to near-black, the route draws itself, pins pop */
 .walk-dim {
   opacity: calc(var(--progress) * 0.86);
+  will-change: opacity;
 }
 .route {
   stroke-dasharray: 1000;
   stroke-dashoffset: calc((1 - var(--progress)) * 1000);
+  will-change: stroke-dashoffset;
 }
 .pop {
   transform: scale(clamp(0, calc((var(--progress) - var(--at)) * 8), 1));
   transform-box: fill-box;
   transform-origin: center bottom;
+  will-change: transform;
 }
 
 /* 5. Verified on your device */
 .photo-in {
-  transform: translateX(calc((1 - var(--progress)) * -130%)) rotate(calc((1 - var(--progress)) * -8deg));
+  transform: translate3d(calc((1 - var(--progress)) * -130%), 0, 0)
+    rotate(calc((1 - var(--progress)) * -8deg));
+  will-change: transform;
 }
 .blocked {
   opacity: clamp(0, calc((var(--progress) - 0.55) * 5), 1);
+  will-change: opacity;
 }
 
 /* 6. Skill tree */
 .branch {
   transform: scale(clamp(0, calc((var(--progress) - var(--at)) * 5), 1));
   transform-origin: center bottom;
+  will-change: transform;
 }
 
 /* CSS scroll-driven reveal where supported (progressive enhancement). */
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .reveal {
-      animation: reveal linear both;
+      animation: reveal cubic-bezier(0.22, 1, 0.36, 1) both;
       animation-timeline: view();
       animation-range: entry 0% cover 30%;
+      will-change: transform, opacity;
     }
     @keyframes reveal {
       from {
         opacity: 0;
-        transform: translateY(24px);
+        transform: translate3d(0, 24px, 0);
       }
       to {
         opacity: 1;
@@ -109,5 +140,20 @@
     min-height: auto;
     padding-top: 3rem;
     padding-bottom: 3rem;
+    contain: none;
+  }
+  /* Nothing animates here, so drop every compositing hint. */
+  .feed,
+  .screen-bar,
+  .beat,
+  .walk-dim,
+  .route,
+  .pop,
+  .photo-in,
+  .blocked,
+  .branch,
+  .reveal,
+  #hero .cloud {
+    will-change: auto;
   }
 }

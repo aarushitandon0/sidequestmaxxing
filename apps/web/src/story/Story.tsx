@@ -33,9 +33,82 @@ export const RENDER_DEPLOY_URL = `https://render.com/deploy?repo=${REPO_URL}`
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
 /**
- * Writes --progress (0..1) onto the scene element while it is on screen. An
- * IntersectionObserver turns the scroll listener on/off, so off-screen scenes cost nothing.
- * No React re-render per frame unless `onProgress` is given.
+ * One scroll listener and one rAF loop drive every scene on the page.
+ *
+ * Each on-screen scene gets `--progress` (0..1) written onto its element, eased toward the
+ * scroll-derived target with a time constant, so coarse wheel and trackpad steps arrive as
+ * smooth motion instead of jumps. Off-screen scenes are unregistered and cost nothing, the
+ * loop parks itself once every scene has settled, and `onProgress` is quantised so a scene
+ * that keeps React state does not re-render once per frame.
+ */
+type SceneState = {
+  el: HTMLElement
+  target: number
+  eased: number
+  written: number
+  sent: number
+  onProgress?: (p: number) => void
+}
+
+const live = new Set<SceneState>()
+let frame = 0
+let stamp = 0
+
+function measure(s: SceneState) {
+  const r = s.el.getBoundingClientRect()
+  const span = Math.max(1, r.height - window.innerHeight)
+  s.target = Math.min(1, Math.max(0, -r.top / span))
+}
+
+function write(s: SceneState) {
+  if (Math.abs(s.eased - s.written) < 0.001) return
+  s.written = s.eased
+  s.el.style.setProperty('--progress', s.eased.toFixed(4))
+  const step = Math.round(s.eased * 12) / 12
+  if (step !== s.sent) {
+    s.sent = step
+    s.onProgress?.(step)
+  }
+}
+
+function tick(now: number) {
+  frame = 0
+  const dt = Math.min(64, stamp ? now - stamp : 16)
+  stamp = now
+  const k = 1 - Math.exp(-dt / 70)
+  let moving = false
+  for (const s of live) {
+    measure(s)
+    const d = s.target - s.eased
+    s.eased = Math.abs(d) < 0.001 ? s.target : s.eased + d * k
+    write(s)
+    if (s.eased !== s.target) moving = true
+  }
+  if (moving) wake()
+}
+
+function wake() {
+  if (!frame && live.size) frame = requestAnimationFrame(tick)
+}
+
+function onScroll() {
+  stamp = 0
+  wake()
+}
+
+function listen(on: boolean) {
+  if (on) {
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+  } else {
+    window.removeEventListener('scroll', onScroll)
+    window.removeEventListener('resize', onScroll)
+  }
+}
+
+/**
+ * Registers one scene with the shared loop. The DEFAULT stays `--progress: 1` (final state),
+ * so the page is readable without JS, and reduced motion opts out entirely.
  */
 function useSceneProgress(onProgress?: (p: number) => void) {
   const ref = useRef<HTMLElement | null>(null)
@@ -46,35 +119,42 @@ function useSceneProgress(onProgress?: (p: number) => void) {
   useEffect(() => {
     const el = ref.current
     if (!el || reducedMotion() || typeof IntersectionObserver === 'undefined') return
-    let raf = 0
-    const update = () => {
-      raf = 0
-      const r = el.getBoundingClientRect()
-      const span = Math.max(1, r.height - window.innerHeight)
-      const p = Math.min(1, Math.max(0, -r.top / span))
-      el.style.setProperty('--progress', p.toFixed(4))
-      cb.current?.(p)
+    const state: SceneState = {
+      el,
+      target: 0,
+      eased: 0,
+      written: -1,
+      sent: -1,
+      onProgress: (p) => cb.current?.(p),
     }
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update)
-    }
-    const io = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) {
-        window.addEventListener('scroll', onScroll, { passive: true })
-        window.addEventListener('resize', onScroll)
-        update()
-      } else {
-        window.removeEventListener('scroll', onScroll)
-        window.removeEventListener('resize', onScroll)
-      }
-    })
+    // Land on the measured value instead of animating in from 0 on first paint.
+    measure(state)
+    state.eased = state.target
+    write(state)
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          if (!live.size) listen(true)
+          measure(state)
+          live.add(state)
+          wake()
+        } else {
+          live.delete(state)
+          if (!live.size) listen(false)
+        }
+      },
+      // Wake a scene slightly before it enters, so nothing pops in half-animated.
+      { rootMargin: '20% 0px' },
+    )
     io.observe(el)
-    update()
     return () => {
       io.disconnect()
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
-      if (raf) cancelAnimationFrame(raf)
+      live.delete(state)
+      if (!live.size) {
+        listen(false)
+        if (frame) cancelAnimationFrame(frame)
+        frame = 0
+      }
     }
   }, [])
   return ref
@@ -165,6 +245,8 @@ function Hero() {
         <div className="parchment-frame hero-art mx-auto w-full max-w-2xl rotate-[-1deg]">
           <img
             src={ART.heroScene}
+            decoding="async"
+            fetchPriority="high"
             width={704}
             height={226}
             className="aspect-[704/226] w-full rounded-2xl object-cover"
@@ -242,7 +324,7 @@ function DungeonMaster() {
         An open-weight model picks from real nearby places and writes a short, safe, spoken briefing. Example quest:
       </p>
       <div className="parchment mx-auto mt-5 grid max-w-3xl gap-4 p-4 sm:grid-cols-[150px_1fr]">
-        <img src={ART.sceneRiver} alt="" className="beat h-40 w-full rounded-xl object-cover sm:h-full" style={at(0)} />
+        <img src={ART.sceneRiver} alt="" loading="lazy" decoding="async" className="beat h-40 w-full rounded-xl object-cover sm:h-full" style={at(0)} />
         <div>
           <p className="beat text-3xl" style={at(0.1)}>The Riverbank Riddle</p>
           <ul className="beat mt-1 flex flex-wrap gap-2" style={at(0.25)}>
@@ -251,7 +333,7 @@ function DungeonMaster() {
             <li className="chip">15 min</li>
           </ul>
           <div className="beat mt-3 flex items-start gap-3" style={at(0.4)}>
-            <img src={PORTRAIT.chill} alt="" className="h-14 w-14 rounded-full border-2 border-edge" />
+            <img src={PORTRAIT.chill} alt="" loading="lazy" decoding="async" className="h-14 w-14 rounded-full border-2 border-edge" />
             <div className="bubble flex-1">
               <p>{DEMO_BRIEFING}</p>
               {canSpeak() ? (
@@ -320,7 +402,7 @@ function VerifiedScene() {
         <div className="relative mx-auto h-[380px] w-[220px]" aria-hidden="true">
           <div className="absolute inset-0 rounded-[2.2rem] border-8 border-ink bg-forest" />
           <div className="absolute inset-3 overflow-hidden rounded-[1.6rem]">
-            <img src={ART.sceneVerify} alt="" className="photo-in h-full w-full object-cover" />
+            <img src={ART.sceneVerify} alt="" loading="lazy" decoding="async" className="photo-in h-full w-full object-cover" />
           </div>
           <div className="blocked absolute -top-6 -right-16 flex flex-col items-center text-berry">
             <span className="rounded-full bg-parchment-light p-2 text-3xl shadow"><XIcon /></span>
@@ -495,7 +577,7 @@ function TryIt() {
         <ol className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {STEPS.map(([title, line], i) => (
             <li key={title} className="reveal flex flex-col">
-              <img src={ART.story[i]} alt="" className="h-28 w-full rounded-t-xl object-cover" />
+              <img src={ART.story[i]} alt="" loading="lazy" decoding="async" className="h-28 w-full rounded-t-xl object-cover" />
               <div className="parchment -mt-2 flex-1 p-2">
                 <p className="text-lg leading-tight">{title}</p>
                 <p className="text-sm text-ink-soft">{line}</p>
