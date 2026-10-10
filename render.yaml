@@ -1,6 +1,8 @@
 # Render Blueprint — MASTERSPEC §12.2. Field names checked 2026-10-07 against Render's
 # official blueprint skill (render-oss/skills). Validate with: render blueprints validate
-# Plan values are the spec's starting point; change only after gate G1 and after asking.
+# Plan values follow the free path (D-97): `sqm-api` runs on Render's free instance and
+# `sqm-llm` is not deployed at all. See the commented block at the end of this file for why,
+# and for how to bring the LLM back. Changing a plan costs money — state the cost and ask.
 services:
   - type: web
     name: sqm-web
@@ -58,18 +60,27 @@ services:
     runtime: docker
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    plan: starter
+    # Free instance: 512 MB RAM / 0.1 CPU, 750 instance-hours per workspace per calendar
+    # month, spins down after 15 min without traffic and takes ~1 min to wake. The API fits:
+    # it has no heavy ML dependency and loads no model in-process (`embedding_model` is named
+    # in config but unused by `app/`), and it needs no persistent disk — which is the point,
+    # because free services cannot attach one.
+    # The cold start is the one demo risk: a judge arriving at an idle service waits ~1 min and
+    # reads it as broken. 750 hours only just covers the ~720 an always-on month needs, so a
+    # keep-warm ping buys availability at the cost of the whole monthly allowance.
+    # Moving to `plan: starter` ($7/mo, always-on) removes both problems — ask first.
+    plan: free
     healthCheckPath: /healthz
     envVars:
       - key: ENV
         value: production
       - key: WEB_ORIGIN
         value: https://sqm-web.onrender.com  # replace with the real URL after first deploy
-      - key: LLM_HOSTPORT
-        fromService:
-          type: pserv
-          name: sqm-llm
-          property: hostport
+      # Deliberately no LLM_HOSTPORT and no LLM_BASE_URL on the free path. `Settings.llm_url`
+      # then resolves to None (app/config.py), `deps.py` builds no LLMClient, and every quest
+      # comes from the fallback engine — which MASTERSPEC §2.4 and CLAUDE.md invariant 5 already
+      # require to work with the LLM down. /healthz reports the LLM as unknown; that behaviour is
+      # covered by tests/test_places.py::test_healthz_reports_unknown_when_unconfigured.
       - key: MONGODB_URI
         sync: false
       - key: MONGODB_DB
@@ -85,22 +96,32 @@ services:
       - key: FALLBACK_ON_LLM_ERROR
         value: "true"
 
-  - type: pserv
-    name: sqm-llm
-    runtime: docker
-    dockerfilePath: ./services/llm/Dockerfile
-    dockerContext: ./services/llm
-    plan: standard  # CHANGE after gate G1 (RAM must fit model + 1 GB headroom)
-    disk:
-      name: models
-      mountPath: /data
-      sizeGB: 10
-    envVars:
-      - key: MODEL_URL
-        sync: false
-      - key: MODEL_SHA256
-        sync: false
-      - key: MODEL_FILE
-        value: quest.gguf
-      - key: CTX_SIZE
-        value: "2048"
+# sqm-llm is NOT deployed on the free path, and cannot be: per Render's blueprint reference the
+# free plan is not available for private services, and no free service may attach a disk — this
+# service is a `pserv` that needs a 10 GB disk for the GGUF. Nothing is lost today, because P17
+# has never run, so no GGUF exists for it to serve (DECISIONS D-60/D-97) and the fallback engine
+# serves quests meanwhile.
+#
+# To bring it back: uncomment the block below, pick a paid plan whose RAM fits the model plus
+# ~1 GB headroom (gate G1, `scripts/bench_llm.py`), set MODEL_URL and MODEL_SHA256 in the Render
+# dashboard, and restore the LLM_HOSTPORT `fromService` entry on sqm-api above.
+#
+#  - type: pserv
+#    name: sqm-llm
+#    runtime: docker
+#    dockerfilePath: ./services/llm/Dockerfile
+#    dockerContext: ./services/llm
+#    plan: standard  # CHANGE after gate G1 (RAM must fit model + 1 GB headroom)
+#    disk:
+#      name: models
+#      mountPath: /data
+#      sizeGB: 10
+#    envVars:
+#      - key: MODEL_URL
+#        sync: false
+#      - key: MODEL_SHA256
+#        sync: false
+#      - key: MODEL_FILE
+#        value: quest.gguf
+#      - key: CTX_SIZE
+#        value: "2048"

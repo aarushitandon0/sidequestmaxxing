@@ -536,3 +536,35 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   succeeded on a retry, Toronto and Singapore only on a second invocation. The query asks for
   `historic` with no value, which in a dense city is enormous (Berlin: 6,898 heritage rows,
   London: 2,187). Final state: **12 cities, 35,916 places**, verified with `check_cities.py`.
+- **D-97 — the blueprint is deployed on Render's free plan, and the LLM is the price.** Asked for a
+  deploy that is confirmed free. Checked against Render's own `render.com/docs/free` and blueprint
+  reference rather than the aggregator sites, which contradict each other (one March 2026 post
+  claims the free tier is gone; the newer ones disagree). What the official docs say: static sites
+  are free, free web services get **750 instance-hours per workspace per calendar month** at 512 MB
+  / 0.1 CPU and spin down after 15 min idle (~1 min to wake), free web services **cannot attach a
+  persistent disk**, and the free plan is **not available for private services**. Docker is
+  supported on free web services.
+  Consequences for this repo: `sqm-web` free as before; `sqm-api` moved `starter` → `free`, which it
+  fits because it loads no model in-process (`embedding_model` is configured but unused by `app/`)
+  and needs no disk; `sqm-llm` **cannot** be free on either count, so it is commented out of
+  `render.yaml` and its `LLM_HOSTPORT` `fromService` entry removed from `sqm-api` — a dangling
+  `fromService` would fail blueprint validation. With neither `LLM_HOSTPORT` nor `LLM_BASE_URL` set,
+  `Settings.llm_url` is `None`, `deps.py` builds no `LLMClient`, and every quest comes from the
+  fallback engine; `/healthz` reports the LLM as `unknown`, already covered by
+  `test_healthz_reports_unknown_when_unconfigured`. Nothing is lost *today* because P17 has never
+  run, so no GGUF exists to serve (D-60).
+  **Known cost of this choice, to be stated honestly in the README and the post:** the live demo
+  serves fallback quests, not tuned-model quests — the tuned model lives in the repo and the eval
+  harness. And the 15-minute spin-down is the real demo risk: a judge arriving cold waits ~1 min
+  and reads it as broken, while keeping the service warm consumes almost the entire 750-hour
+  allowance (~720 for an always-on month). `plan: starter` (~$7/mo/service) removes both; it needs
+  an explicit cost decision.
+- **D-98 — GitHub Pages was considered and cannot host this app.** It is static-only, and the web
+  app makes five real calls (`/v1/quests/generate`, `/v1/profile`, `/v1/profile/settings`,
+  `/v1/recap/weekly`) — the app would load and then fail on the first quest. Three further
+  blockers even for the frontend alone: Pages serves no custom headers, so the whole verified CSP,
+  `Permissions-Policy` and `X-Frame-Options` block (D-65) would be lost; the SPA rewrite becomes
+  the `404.html` hack; and `vite.config.ts` sets no `base`, so a project-page subpath breaks every
+  asset URL. Cloudflare Pages has the same API problem. Also checked and rejected: Hugging Face
+  Spaces (July 2026 forum reports say Docker/Gradio on `cpu-basic` now needs PRO), Fly.io (no free
+  tier for new orgs; trial then a card), Koyeb (reports of a card with a $29 pre-auth hold).

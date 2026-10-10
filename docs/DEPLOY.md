@@ -1,12 +1,37 @@
 # DEPLOY.md — Deploying Sidequestmaxxing to Render
 
 > Nothing here is automated. Claude never deploys or spends money; you do these steps in the Render dashboard.
-> Cost note: `sqm-api` (starter) and `sqm-llm` (standard + 10 GB disk) are **paid** instances. Check https://render.com/pricing and any sponsor credit first (PROJECTPLAN gate G0). `sqm-web` (static) is free.
+> **Cost note: the blueprint as committed costs nothing** (D-97). `sqm-web` is a static site, which
+> Render documents as free; `sqm-api` runs on `plan: free`; `sqm-llm` is commented out, because
+> Render's free plan covers neither private services nor persistent disks. Mongo Atlas stays on M0.
+> Read §0b before you rely on that, then check https://render.com/pricing and any sponsor credit
+> (PROJECTPLAN gate G0) before changing a single `plan:` value.
+
+## 0b. What "free" costs you instead
+
+Free is real, but it is not free of consequences. Three, in the order they will bite:
+
+1. **Cold starts.** A free web service spins down after 15 minutes without traffic and takes
+   about a minute to wake. A judge or playtester opening the app cold gets a minute of nothing
+   and reads it as broken. This is the single biggest risk to a demo.
+2. **750 instance-hours per workspace per calendar month.** An always-on month needs ~720, so
+   keeping `sqm-api` warm with a ping consumes essentially the whole allowance and leaves no
+   room for a second service. Run out and free services are suspended until the next month.
+3. **No LLM.** With `sqm-llm` undeployed there is no `LLM_HOSTPORT`, so `Settings.llm_url` is
+   `None` and every quest comes from the fallback engine. That is a supported state, not a
+   broken one (MASTERSPEC §2.4, CLAUDE.md invariant 5) — `/healthz` reports the LLM as
+   `unknown` and `X-Quest-Source` reads `fallback`. Say so honestly in the README and the post:
+   the tuned model is in the repo and the eval harness, not in the live demo.
+
+Free instances are 512 MB RAM / 0.1 CPU. The API fits — it loads no model in-process and needs
+no disk. If you later want the LLM or always-on behaviour, `plan: starter` is about $7/mo per
+service; state the cost and decide deliberately.
 
 ## 0. Before the first deploy
 1. Push this repo to GitHub (public).
 2. Have these ready in a password manager (never paste them into a chat/agent session):
-   `MONGODB_URI`, `SENTRY_DSN` (backend), `VITE_SENTRY_DSN` (frontend, optional), `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MODEL_URL` (a public GGUF URL; any small instruct GGUF works until the tuned model exists).
+   `MONGODB_URI`, `SENTRY_DSN` (backend), `VITE_SENTRY_DSN` (frontend, optional), `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`. (`MODEL_URL` is only needed if you uncomment `sqm-llm` — a public GGUF URL; any small instruct GGUF works until the tuned model exists.)
+   Also confirm Atlas has a **free FTS index slot** before you start: an M0 cluster allows 3 across all databases, and without `events_vec` the live-events section renders empty with no error anywhere (D-82).
 3. Optional but recommended: validate the Blueprint locally with the Render CLI (≥ 2.7.0):
    ```bash
    render blueprints validate
@@ -14,12 +39,14 @@
 
 ## 1. Create the Blueprint
 1. Render dashboard → **New** → **Blueprint** → connect the GitHub repo → branch `main`.
-2. Render reads `render.yaml` and proposes 3 services: `sqm-web` (static), `sqm-api` (Docker web service), `sqm-llm` (private service + disk `models` at `/data`).
+2. Render reads `render.yaml` and proposes **2** services: `sqm-web` (static) and `sqm-api`
+   (Docker web service, `plan: free`). `sqm-llm` is commented out — see §0b.
 3. It will prompt for every `sync: false` variable. Fill:
    - `sqm-api`: `MONGODB_URI`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `SENTRY_DSN` (empty is OK for now).
-   - `sqm-llm`: `MODEL_URL` (required), `MODEL_SHA256` (empty until the final model).
    - `sqm-web`: `VITE_SENTRY_DSN`, `VITE_GEMMA_MODEL_URL` (both may be empty).
-4. Click **Apply**. First `sqm-llm` boot downloads the model to the disk (can take minutes).
+4. Click **Apply**. Nothing downloads a model, so the first boot is just the Docker build.
+   If you uncommented `sqm-llm`, it is a third service and its first boot pulls the GGUF to the
+   disk (can take minutes) — and it cannot be on the free plan.
 
 ## 2. Fix the URL-suffix gotcha (MASTERSPEC §12.2 #1)
 If Render appended a suffix to service names, the hard-coded URLs in `render.yaml` are wrong.
@@ -46,7 +73,10 @@ curl -sS -X POST "$API_BASE_URL/v1/quests/generate" \
 curl -sS -X POST "$API_BASE_URL/v1/quests/<id>/accept" -H "X-Device-Id: $DEV"
 curl -sS -X POST "$API_BASE_URL/v1/quests/<id>/skip"   -H "X-Device-Id: $DEV"
 ```
-To prove the fallback: suspend `sqm-llm` in the dashboard and run generate again — it still returns a valid quest (the stored doc has `source: "fallback"`).
+On the free path there is no `sqm-llm`, so this **is** the fallback path: expect a valid quest with
+`X-Quest-Source: fallback` and a stored doc with `source: "fallback"`. If you have deployed the LLM,
+prove the fallback by suspending `sqm-llm` in the dashboard and running generate again — it still
+returns a valid quest.
 
 ## 4. Atlas setup (after P3)
 ```bash
@@ -70,7 +100,12 @@ Read the model options + memory math in `docs/DECISIONS.md` ("Gate G1"). You cho
    python scripts/bench_llm.py --base-url http://localhost:8080 --n 10 --label "laptop <model>"
    ```
    (or with Ollama: `LLM_BASE_URL=http://localhost:11434 LLM_MODEL=<tag> python scripts/bench_llm.py --n 10`)
-3. **Deploy `sqm-llm` on Render.** In the Blueprint, set `sqm-llm` → `MODEL_URL` (and `MODEL_SHA256` if known). Set the plan to what the memory table says fits (**ask/confirm cost first**; edit `plan:` in `render.yaml` in the same commit). Wait for the first boot to finish downloading; logs end with the server listening.
+3. **Deploy `sqm-llm` on Render.** This leaves the free path: uncomment the `sqm-llm` block at the
+   bottom of `render.yaml` and restore the `LLM_HOSTPORT` `fromService` entry on `sqm-api`. A
+   private service with a disk **cannot** be on the free plan, so pick the plan the memory table
+   says fits (**ask/confirm cost first**; edit `plan:` in `render.yaml` in the same commit), set
+   `MODEL_URL` (and `MODEL_SHA256` if known), and wait for the first boot to finish downloading;
+   logs end with the server listening.
 4. **Benchmark on Render.** `sqm-llm` is private, so run the bench from `sqm-api` (the image ships the script). Dashboard → `sqm-api` → **Shell**:
    ```bash
    cd /srv && PYTHONPATH=/srv python scripts/bench_llm.py --n 20 --label "render-<plan> <model>"
