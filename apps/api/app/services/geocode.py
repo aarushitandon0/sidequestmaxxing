@@ -55,6 +55,35 @@ def _norm_name(name: str) -> str:
     return _WS_RE.sub(" ", name).strip().casefold()
 
 
+def geocode_query(*, venue_name: str, title: str, address: list[str], city: str) -> str:
+    """The Nominatim `q` for an event: venue, then address lines, then the city.
+
+    Parts are deduplicated case-insensitively because the Google Search events pack has no
+    `venue` object and the venue is taken from `address[0]`, so a naive join repeats it -
+    and `"Pashan Lake, Pashan Lake, Pashan"` misses a lake that `"Pashan Lake, Pashan, Pune"`
+    finds. The city is appended for the same reason: without it Nominatim misses venues that
+    resolve cleanly with it.
+    """
+    parts: list[str] = []
+    seen: set[str] = set()
+    for part in (venue_name or title, *address):
+        part = _WS_RE.sub(" ", part).strip()
+        if not part or part.casefold() in seen:
+            continue
+        seen.add(part.casefold())
+        parts.append(part)
+    # The city is compared token by token, not whole: an address line of "Pune, Maharashtra"
+    # already carries most of a city of "Pune, Maharashtra, India", and repeating it reads as
+    # a different, worse query.
+    joined = ", ".join(parts).casefold()
+    for token in city.split(","):
+        token = _WS_RE.sub(" ", token).strip()
+        if token and token.casefold() not in joined:
+            parts.append(token)
+            joined = ", ".join(parts).casefold()
+    return ", ".join(parts)
+
+
 def _resolved_from_place(doc: Doc) -> Resolved:
     lng, lat = doc["loc"]["coordinates"]
     return Resolved(

@@ -27,6 +27,11 @@ _MONTHS.update({name.lower(): number for number, name in enumerate(calendar.mont
 _DATE_RE = re.compile(
     r"\b(?P<mon>[A-Za-z]{3,9})\.?\s+(?P<day>\d{1,2})(?:\s*,\s*(?P<year>\d{4}))?\b"
 )
+# `gl=in` prints the day first ("11 Oct"). Tried only after the month-first form, so a
+# plain "Oct 11" is never re-read as day 11 of a month named "11".
+_DATE_DMY_RE = re.compile(
+    r"\b(?P<day>\d{1,2})\s+(?P<mon>[A-Za-z]{3,9})\.?(?:\s*,?\s*(?P<year>\d{4}))?\b"
+)
 # A time needs a meridiem (Google always prints one); the first half of a range may
 # borrow it from the second ("7:00 - 9:30 AM").
 # Hyphen first so it is a literal inside the character class; the rest are the
@@ -56,14 +61,30 @@ def _to_24h(hour: int, meridiem: str | None) -> int | None:
     return hour + 12 if is_pm else hour
 
 
+def _date_match(text: str) -> re.Match[str] | None:
+    """The leftmost `<Month> <D>` or `<D> <Month>` whose month is a real month name.
+
+    Both readings are tried and the leftmost wins, because each pattern can match noise
+    inside the other's string: `"11 Oct 5:00 PM"` offers `Oct 5` to the month-first
+    pattern, and `"7:00 - 9:30 AM"` offers `30 AM` to the day-first one. A day followed
+    by `:` is a clock time, never a day of the month.
+    """
+    candidates = [
+        match
+        for pattern in (_DATE_RE, _DATE_DMY_RE)
+        for match in pattern.finditer(text)
+        if _MONTHS.get(match["mon"].lower()) is not None
+        and not text[match.end("day") : match.end("day") + 1] == ":"
+    ]
+    return min(candidates, key=lambda m: m.start()) if candidates else None
+
+
 def _parse_date(text: str, today: date) -> date | None:
-    """First `<Month> <D>[, <YYYY>]` in `text`, with the year inferred when absent."""
-    match = _DATE_RE.search(text)
+    """First `<Month> <D>` or `<D> <Month>` in `text`, with the year inferred when absent."""
+    match = _date_match(text)
     if match is None:
         return None
-    month = _MONTHS.get(match["mon"].lower())
-    if month is None:
-        return None
+    month = _MONTHS[match["mon"].lower()]
     day = int(match["day"])
     if match["year"] is not None:
         try:

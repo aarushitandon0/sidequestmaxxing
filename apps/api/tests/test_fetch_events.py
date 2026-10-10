@@ -270,6 +270,7 @@ async def test_a_document_that_is_not_a_valid_event_doc_is_dropped_before_upsert
         centre=(18.52, 73.85),
         bbox=(18.4, 73.7, 18.6, 73.9),
         nominatim_url="http://nominatim.invalid/search",
+        city="Pune",
         today=NOW.date(),
         now=NOW,
     )
@@ -294,6 +295,7 @@ async def test_a_valid_event_still_produces_a_document(monkeypatch: pytest.Monke
         centre=(18.52, 73.85),
         bbox=(18.4, 73.7, 18.6, 73.9),
         nominatim_url="http://nominatim.invalid/search",
+        city="Pune",
         today=NOW.date(),
         now=NOW,
     )

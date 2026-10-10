@@ -35,6 +35,42 @@ def _sub_dict(entry: dict[str, Any], key: str) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+_BARE_TIME = re.compile(r"^(?P<h>\d{1,2})(?::(?P<m>\d{2}))?$")
+
+
+def _with_meridiem(time_text: str) -> str:
+    """A bare `H[:MM]` gets an explicit meridiem; anything else is returned untouched.
+
+    The Google Search events pack prints venue-local time with no AM/PM (`"5:00"`), and
+    `event_time` refuses a time it cannot read, so the assumption is made here once, at the
+    ingest boundary, rather than hidden in the parser. Hours 1-11 are read as PM because
+    these listings are overwhelmingly evening shows; 12 is noon. A morning event mislabelled
+    this way fails the daylight filter and is dropped, which is the safe direction.
+    """
+    match = _BARE_TIME.match(time_text.strip())
+    if match is None:
+        return time_text
+    hour = int(match["h"])
+    if not 1 <= hour <= 12:
+        return time_text
+    return f"{hour}:{match['m'] or '00'} PM"
+
+
+def _date_and_when(entry: dict[str, Any]) -> tuple[str, str]:
+    """`(start_date, when_text)` from either entry shape.
+
+    Legacy `google_events` nested both under `date`; the Google Search events pack gives a
+    bare `date` string and a separate `time`.
+    """
+    date_value = entry.get("date")
+    if isinstance(date_value, dict):
+        return str(date_value.get("start_date") or ""), str(date_value.get("when") or "")
+    start_date = str(date_value or "").strip()
+    time_text = _with_meridiem(str(entry.get("time") or "").strip())
+    when_text = " ".join(part for part in (start_date, time_text) if part)
+    return start_date, when_text
+
+
 def parse_events(payload: dict[str, Any]) -> list[SerpEvent]:
     """Typed events from a SerpApi payload. Never raises: bad entries are skipped.
 
@@ -45,19 +81,22 @@ def parse_events(payload: dict[str, Any]) -> list[SerpEvent]:
     for entry in payload.get("events_results") or []:
         if not isinstance(entry, dict):
             continue
-        date = _sub_dict(entry, "date")
         venue = _sub_dict(entry, "venue")
         address = entry.get("address")
+        address_lines = [str(a) for a in address] if isinstance(address, list) else []
+        start_date, when_text = _date_and_when(entry)
         try:
             out.append(
                 SerpEvent.model_validate(
                     {
                         "title": entry.get("title"),  # None fails validation, entry is skipped
-                        "venue_name": venue.get("name") or "",
-                        "address": [str(a) for a in address] if isinstance(address, list) else [],
+                        # No `venue` object in the Google Search shape: its first address
+                        # line is the venue ("Balagandharv Rang Mandir", "Shivajinagar").
+                        "venue_name": venue.get("name") or next(iter(address_lines), ""),
+                        "address": address_lines,
                         "url": entry.get("link"),
-                        "when_text": date.get("when") or "",
-                        "start_date": date.get("start_date") or "",
+                        "when_text": when_text,
+                        "start_date": start_date,
                         "description": entry.get("description") or "",
                     }
                 )

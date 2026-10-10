@@ -152,7 +152,7 @@ Every stage logs a count so `--dry-run` explains itself:
 | sanitize | title/venue through `sanitize_place_name`, tags through `sanitize_tags_summary` | §9.3: untrusted free text, see §6 below |
 | banned-term lint | V4 `BANNED_RULES` over title + description; drop on hit | Excludes bar crawls, climbing meets, swim events |
 | ticketing | drop if `ticket_info[]` has a paid/ticketing `link_type`, or price-like text in title/description | §1.4: no payments |
-| time parse | `date.start_date` + `date.when` → UTC `starts_at`/`ends_at`; unparseable dropped | A quest needs a real window |
+| time parse | `start_date` + `when_text` → UTC `starts_at`/`ends_at`; unparseable dropped | A quest needs a real window |
 | daylight | drop if the window does not overlap local daylight (existing `services/sun.py`) | §9.1: no night-time isolated travel |
 | geocode | §5.2 below; unresolvable dropped | No coords means no distance filter and no pin |
 | embed | `FastEmbedder` over `text`, same model as places | Shares the 384-dim space |
@@ -166,6 +166,22 @@ the heuristic is visible rather than silently assumed.
 Verified against SerpApi's own docs: `events_results[]` carries `address[]`, `venue.name` and
 `event_location_map` (a static map image plus a link), but **no latitude or longitude**. Three
 tiers, in order:
+
+> **Payload shape, as actually returned (2026-10-10).** The dedicated `google_events` engine was
+> deprecated (SerpApi changelog 2026-08-24) and the pack now rides in `events_results` on
+> `engine=google`, with a **flatter entry** than the docs above describe:
+> `{title, type, date: "11 Oct", time: "5:00", address: [...], thumbnail}` — `date` and `time`
+> are **strings**, and there is **no `venue` object, no `link`, no `description` and no
+> `ticket_info`**. Consequences, all handled at the ingest boundary in `serp_events.py`:
+> - the venue is `address[0]`, so the geocode query must not repeat it (`geocode_query`);
+> - `gl=in` prints the day first (`"11 Oct"`), so `event_time` tries month-first *and*
+>   day-first and takes the leftmost real match;
+> - `time` carries **no meridiem**, so a bare hour 1-12 is read as **PM** (these listings are
+>   overwhelmingly evening shows). A misread morning event fails the daylight filter and is
+>   dropped, which is the safe direction;
+> - with no `ticket_info`, paid-admission detection falls back to price-like text alone.
+>
+> Legacy nested payloads still parse, so caches taken before the migration stay readable.
 
 1. **Match the venue against the existing `places` collection.** Normalized-name exact match,
    then a vector-similarity lookup over `places` restricted to the city's geohash cells,

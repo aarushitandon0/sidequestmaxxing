@@ -39,7 +39,7 @@ from app.models.event import EventDoc, SerpEvent
 from app.services.embeddings import FastEmbedder
 from app.services.event_time import overlaps_daylight, parse_event_window
 from app.services.geo import cell5
-from app.services.geocode import Resolved, match_place, nominatim_lookup
+from app.services.geocode import Resolved, geocode_query, match_place, nominatim_lookup
 from app.services.serp_events import (
     banned_terms_hit,
     event_tags_summary,
@@ -229,6 +229,7 @@ async def _resolve(
     centre: tuple[float, float],
     bbox: tuple[float, float, float, float],
     nominatim_url: str,
+    city: str,
 ) -> Resolved | None:
     """Tier 1, then tier 2. There is no tier 3: an unresolvable venue is dropped."""
     lat, lng = centre
@@ -243,7 +244,7 @@ async def _resolve(
                 return hit
     if client is None:
         return None
-    query = ", ".join(part for part in (e.venue_name or e.title, *e.address) if part)
+    query = geocode_query(venue_name=e.venue_name, title=e.title, address=e.address, city=city)
     return await nominatim_lookup(client, nominatim_url, query, bbox)
 
 
@@ -298,6 +299,7 @@ def main(argv: list[str] | None = None) -> int:
             now=now,
             bbox=bbox,
             centre=((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2),
+            city=args.city,
             dry_run=args.dry_run,
             no_geocode=args.no_geocode,
         )
@@ -324,6 +326,7 @@ async def _keep_or_count(
     centre: tuple[float, float],
     bbox: tuple[float, float, float, float],
     nominatim_url: str,
+    city: str,
     today: date,
     now: datetime,
 ) -> dict[str, Any] | None:
@@ -342,7 +345,9 @@ async def _keep_or_count(
         counts["no_time"] += 1
         return None
     venue_vector = (await embedder.embed([event.venue_name or event.title]))[0]
-    resolved = await _resolve(db, geo_client, event, venue_vector, centre, bbox, nominatim_url)
+    resolved = await _resolve(
+        db, geo_client, event, venue_vector, centre, bbox, nominatim_url, city
+    )
     if resolved is None:
         counts["no_coords"] += 1
         return None
@@ -374,6 +379,7 @@ async def _run(
     now: datetime,
     bbox: tuple[float, float, float, float],
     centre: tuple[float, float],
+    city: str,
     dry_run: bool,
     no_geocode: bool,
 ) -> int:
@@ -410,6 +416,7 @@ async def _run(
                 centre=centre,
                 bbox=bbox,
                 nominatim_url=nominatim_url,
+                city=city,
                 today=now.date(),
                 now=now,
             )

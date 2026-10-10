@@ -93,3 +93,75 @@ def test_when_fragment_cannot_forge_other_tag_fields() -> None:
     summary = event_tags_summary(sanitize_event(e), None)
     assert "kind=temple" not in summary
     assert "indoor=yes" not in summary
+
+
+# --- P23 engine migration: the Google Search events pack -------------------------------------
+# `google_events` was deprecated (SerpApi changelog 2026-08-24) and the events pack now rides
+# in `events_results` on the plain Google Search engine, with a flatter entry: `date` and
+# `time` are strings, there is no `venue` object, no `link` and no `description`.
+
+GOOGLE_SHAPE = json.loads(
+    (pathlib.Path(__file__).parent / "fixtures" / "serpapi_events_google_shape.json").read_text(
+        encoding="utf-8"
+    )
+)
+
+
+def test_google_shape_parses_every_entry() -> None:
+    assert len(parse_events(GOOGLE_SHAPE)) == len(GOOGLE_SHAPE["events_results"])
+
+
+def test_google_shape_string_date_reaches_start_date() -> None:
+    walk = next(e for e in parse_events(GOOGLE_SHAPE) if "Heritage" in e.title)
+    assert walk.start_date == "11 Oct"
+
+
+def test_google_shape_when_text_carries_both_date_and_time() -> None:
+    walk = next(e for e in parse_events(GOOGLE_SHAPE) if "Heritage" in e.title)
+    assert "11 Oct" in walk.when_text
+    assert "7:00" in walk.when_text
+    assert "AM" in walk.when_text.upper()
+
+
+def test_google_shape_bare_evening_time_is_read_as_pm() -> None:
+    """`5:00` on a drama listing is a 5 PM show; a bare 1-11 is assumed PM."""
+    drama = next(e for e in parse_events(GOOGLE_SHAPE) if e.title == "Shubham Karoti")
+    assert "PM" in drama.when_text.upper()
+
+
+def test_google_shape_explicit_meridiem_is_not_overridden() -> None:
+    nature = next(e for e in parse_events(GOOGLE_SHAPE) if "Nature" in e.title)
+    assert "AM" in nature.when_text.upper()
+    assert "PM" not in nature.when_text.upper()
+
+
+def test_google_shape_venue_comes_from_the_address() -> None:
+    drama = next(e for e in parse_events(GOOGLE_SHAPE) if e.title == "Shubham Karoti")
+    assert drama.venue_name == "Balagandharv Rang Mandir"
+    assert drama.address == ["Balagandharv Rang Mandir", "Shivajinagar"]
+
+
+def test_google_shape_has_no_listing_url() -> None:
+    assert all(e.url is None for e in parse_events(GOOGLE_SHAPE))
+
+
+def test_google_shape_safety_filters_still_bite() -> None:
+    events = [sanitize_event(e) for e in parse_events(GOOGLE_SHAPE)]
+    climbing = next(e for e in events if "climb" in e.title.lower())
+    assert banned_terms_hit(climbing) == "climb"
+    priced = next(e for e in events if "comedy" in e.title.lower())
+    assert is_ticketed({}, priced) is True
+
+
+def test_google_shape_injection_marker_is_stripped_from_title() -> None:
+    injected = next(e for e in parse_events(GOOGLE_SHAPE) if "SYSTEM" in e.title)
+    clean = sanitize_event(injected)
+    assert "system" not in clean.title.lower()
+    assert "pottery" in clean.title.lower()
+
+
+def test_legacy_nested_shape_still_parses() -> None:
+    """Payloads cached before the engine migration must not become unreadable."""
+    legacy = next(e for e in parse_events(PAYLOAD) if "Heritage" in e.title)
+    assert legacy.start_date == "Oct 11"
+    assert legacy.venue_name == "Shaniwar Wada"

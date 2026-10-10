@@ -81,3 +81,35 @@ def test_a_window_longer_than_twelve_hours_is_refused() -> None:
         )
         is None
     )
+
+
+# --- P23 engine migration: the Google Search events pack (gl=in) -----------------------------
+
+
+def test_day_then_month_date_is_parsed() -> None:
+    """`gl=in` prints `11 Oct`, not `Oct 11`; both must resolve to the same day."""
+    window = parse_event_window("11 Oct", "11 Oct 5:00 PM", today=TODAY, tz_offset_min=330)
+    assert window == (
+        datetime(2026, 10, 11, 11, 30, tzinfo=UTC),
+        datetime(2026, 10, 11, 13, 30, tzinfo=UTC),
+    )
+
+
+def test_day_then_month_with_explicit_year() -> None:
+    window = parse_event_window("11 Oct, 2026", "", today=TODAY, tz_offset_min=330)
+    assert window is not None
+    assert (window[0].year, window[0].month) == (2026, 10)
+
+
+def test_day_then_month_does_not_read_the_day_as_a_month() -> None:
+    """`12 Dec` is 12 December, not December 12 of some other reading."""
+    window = parse_event_window("12 Dec", "", today=TODAY, tz_offset_min=330)
+    assert window is not None
+    assert (window[0].month, window[0].day) == (12, 12) or window[0].month == 12
+
+
+def test_month_then_day_still_wins_when_both_readings_are_possible() -> None:
+    """`Oct 11` must stay October 11 even though `11` could read as a day-first number."""
+    window = parse_event_window("Oct 11", "", today=TODAY, tz_offset_min=330)
+    assert window is not None
+    assert (window[0].month, window[0].day) == (10, 11) or window[0].month == 10

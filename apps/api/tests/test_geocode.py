@@ -8,6 +8,7 @@ from app.services.embeddings import EMBEDDING_DIM
 from app.services.geo import cell5
 from app.services.geocode import (
     VENUE_MATCH_COSINE,
+    geocode_query,
     match_place,
     nominatim_lookup,
     within_bbox,
@@ -166,3 +167,46 @@ def test_within_bbox_boundaries() -> None:
     assert within_bbox(18.63, 73.99, PUNE_BBOX)
     assert not within_bbox(18.42, 73.86, PUNE_BBOX)
     assert not within_bbox(18.52, 74.01, PUNE_BBOX)
+
+
+# --- geocode query building ------------------------------------------------------------------
+
+
+def test_query_does_not_repeat_a_venue_that_came_from_the_address() -> None:
+    """The Google Search shape sets `venue_name` to `address[0]`; repeating it misses."""
+    q = geocode_query(
+        venue_name="Pashan Lake",
+        title="Morning Nature Walk",
+        address=["Pashan Lake", "Pashan"],
+        city="Pune",
+    )
+    assert q == "Pashan Lake, Pashan, Pune"
+
+
+def test_query_appends_the_city_once() -> None:
+    q = geocode_query(
+        venue_name="Shaniwar Wada", title="Heritage Walk", address=["Shaniwar Peth"], city="Pune"
+    )
+    assert q == "Shaniwar Wada, Shaniwar Peth, Pune"
+
+
+def test_query_does_not_duplicate_a_city_already_in_the_address() -> None:
+    q = geocode_query(
+        venue_name="Shaniwar Wada",
+        title="Heritage Walk",
+        address=["Shaniwar Peth", "Pune, Maharashtra"],
+        city="Pune, Maharashtra, India",
+    )
+    assert q.lower().count("maharashtra") == 1
+
+
+def test_query_falls_back_to_the_title_when_there_is_no_venue() -> None:
+    q = geocode_query(venue_name="", title="Heritage Walk", address=[], city="Pune")
+    assert q == "Heritage Walk, Pune"
+
+
+def test_query_dedupes_case_insensitively() -> None:
+    q = geocode_query(
+        venue_name="pashan lake", title="Walk", address=["Pashan Lake", "Pashan"], city="Pune"
+    )
+    assert q.lower().count("pashan lake") == 1
