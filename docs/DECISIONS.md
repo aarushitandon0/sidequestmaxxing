@@ -577,3 +577,17 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   any outdoor spot — Colour Quest — uses `_OUTDOOR_ANY`. Found by generating quests for eight
   seeded cities against the real Atlas, which no unit test would have caught: every one of those
   quests passed V1-V13, because nothing in the validators knows a gallery has no trees.
+- **D-98 — the live demo runs its API through a Cloudflare Quick Tunnel, because Render asks
+  for a card.** `sqm-api` is suspended and cannot be resumed until the owner can add a payment
+  method (2026-11-01). Everything else was ruled out, not guessed at: Hugging Face Docker Spaces
+  stopped being free on `cpu-basic` in July 2026 (PRO subscription now required), Koyeb added a
+  card plus a $29 hold in February 2026, Fly.io has no free tier, and Vercel/serverless cannot
+  host this API at all because it loads fastembed (ONNX) in-process, which blows both the bundle
+  limit and the function timeout. MLH sponsor offers were checked: Hacktoberfest 2026 has one
+  pool (ElevenLabs Creator Tier), no hosting. So `VITE_API_BASE_URL` and the CSP `connect-src`
+  point at a `trycloudflare.com` URL while the API runs on the owner's machine. This is demo
+  scaffolding with a revert note in `render.yaml`, not a deployment decision: the site works only
+  while that laptop serves it, and a quick-tunnel URL changes on every restart, so each restart
+  costs another blueprint push. Verified end to end before pushing: health `db: ok`, a real
+  London quest ("Gallery Eye at British Museum"), and
+  `Access-Control-Allow-Origin: https://sqm-web.onrender.com`.
