@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { PersonaPicker } from '../components/PersonaPicker'
 import { api, friendlyError } from '../lib/api'
+import { clearJournal } from '../lib/journal'
 import { INTEREST_OPTIONS, RADIUS_OPTIONS } from '../lib/prefs'
 import { clearAppStorage } from '../lib/storage'
 import { clearVoiceCache } from '../lib/voice'
@@ -17,6 +18,9 @@ export function Settings() {
     onSuccess: async () => {
       clearAppStorage() // device id, prefs, active quest — a fresh start
       await clearVoiceCache()
+      // The journal lives in IndexedDB, which clearAppStorage cannot reach (P24). Photos
+      // are the most personal thing stored, so "delete my data" has to erase them too.
+      await clearJournal().catch(() => undefined)
       window.location.assign('/')
     },
   })

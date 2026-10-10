@@ -3,7 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 
 import { ART } from '../components/art'
 import { CountUp } from '../components/CountUp'
-import { ClockIcon, LeafIcon, PhoneIcon, SunIcon } from '../components/Icons'
+import { CameraIcon, ClockIcon, LeafIcon, PhoneIcon, SunIcon } from '../components/Icons'
 import { XpBar } from '../components/XpBar'
 import { SKILL_LABEL } from '../lib/labels'
 import { elapsedSeconds } from '../lib/questMachine'
@@ -82,7 +82,16 @@ export function Reward() {
           {result.streak > 1 ? <p className="mt-2">{result.streak}-day streak. Small steps, big adventures.</p> : <p className="mt-2 text-ink-soft">Small steps. Big adventures.</p>}
 
           <div className="mt-4 flex flex-col gap-2">
-            <Link to="/profile" className="btn btn-moss" onClick={() => { reset(); void profile.refetch() }}>
+            <Link
+              to="/journal"
+              // Router state, not the URL: the place name never lands in browser history.
+              state={{ questTitle: quest.title, placeName: quest.place?.name, category: quest.category }}
+              className="btn btn-moss"
+              onClick={() => { reset(); void profile.refetch() }}
+            >
+              <CameraIcon /> Add this to your journal
+            </Link>
+            <Link to="/profile" className="btn btn-ghost" onClick={() => { reset(); void profile.refetch() }}>
               View your skills
             </Link>
             <Link to="/home" className="btn btn-ghost" onClick={() => reset()}>

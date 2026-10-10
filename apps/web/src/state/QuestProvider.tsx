@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 
 import { api, ApiError } from '../lib/api'
 import { recordCompletion } from '../lib/fieldLog'
+import { markJournalUnlocked } from '../lib/journal'
 import { IDLE, isQuestRun, questReducer, type QuestRun } from '../lib/questMachine'
 import { HEARTBEAT_MS } from '../lib/screenTime'
 import { readJson, writeJson } from '../lib/storage'
@@ -79,6 +80,7 @@ export function QuestProvider({ children }: { children: ReactNode }) {
         const result = await api.completeQuest(questId, pending)
         if (!cancelled) {
           recordCompletion(runRef.current, result)
+          markJournalUnlocked()
           dispatch({ type: 'complete', result, now: Date.now() })
         }
       } catch (err) {
@@ -106,6 +108,8 @@ export function QuestProvider({ children }: { children: ReactNode }) {
   const complete = useCallback((result: CompletionResult) => {
     // Field log first: the reducer stops the screen timer and clears `pending`.
     recordCompletion(runRef.current, result)
+    // First finished quest unlocks the Journal, offline included.
+    markJournalUnlocked()
     dispatch({ type: 'complete', result, now: Date.now() })
   }, [])
   const reset = useCallback(() => dispatch({ type: 'reset' }), [])

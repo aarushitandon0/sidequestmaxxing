@@ -491,3 +491,24 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   With hour-long ones the quest seed (`uuid4().int`, random per request) made that assertion
   seed-dependent, so it passed alone and failed in a full run. It now asserts
   `rarity_for(est_minutes, None)` — stronger and deterministic — plus never `legendary` (D-35).
+- **D-89 — the Journal keeps photos in IndexedDB on the device, and nothing uploads them.**
+  The ask was "upload as many photographs as possible", which §9.3 and invariant 2 forbid: there
+  is no image upload endpoint and photos never leave the phone. Built instead as unlimited
+  on-device storage. `localStorage` cannot hold blobs (and caps around 5 MB), so this is the one
+  place in the app that uses IndexedDB. Two consequences stated on the page itself: nothing is
+  backed up, and "delete my data" had to learn to clear IndexedDB because `clearAppStorage`
+  only reaches `localStorage`.
+- **D-90 — the canvas downscale is a privacy step, not just a size one.** Every picked photo is
+  re-encoded through a canvas at ≤ 1600 px, which drops the EXIF block and with it the GPS tag a
+  phone camera writes into a picture. Storing the original `File` would be simpler and would put
+  the coordinates of the player's home into the journal, so `downscale` must not be optimised
+  away. This is stricter than §9.3 requires, since the photo never leaves the device either way.
+- **D-91 — the Journal unlocks on the first completed quest, from either source.**
+  `isJournalUnlocked` is `localStorage` flag OR server `quests_completed > 0`. The flag is set in
+  both completion paths in `QuestProvider` (including the offline retry) so the Journal opens
+  with the API unreachable; the server count covers a player whose local flag was cleared but
+  whose history is real. The reducer stays pure, so the write does not live there. The `/journal`
+  route stays reachable while locked and renders its own sealed panel, so a bookmark never 404s.
+- **D-92 — quest context reaches the Journal through router state, not the URL.** The reward
+  screen's "add this to your journal" passes `{questTitle, placeName, category}` as React Router
+  state. A query string would write a real place name into browser history for no benefit.

@@ -2,10 +2,11 @@ import { Component, useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 
 import { PORTRAIT } from './art'
-import { BookIcon, GearIcon, HomeIcon, MapIcon, StarIcon, WifiOffIcon } from './Icons'
+import { BookIcon, GearIcon, HomeIcon, MapIcon, ScrollIcon, StarIcon, WifiOffIcon } from './Icons'
 import { World } from './World'
 import { XpBar } from './XpBar'
 import { useOnline, useProfile } from '../state/hooks'
+import { isJournalUnlocked } from '../lib/journal'
 import { loadPrefs } from '../lib/prefs'
 import { reportError } from '../lib/sentry'
 
@@ -16,6 +17,23 @@ const NAV = [
   { to: '/chronicle', label: 'Chronicle', Icon: BookIcon },
   { to: '/settings', label: 'Settings', Icon: GearIcon },
 ] as const
+
+const JOURNAL_TAB = { to: '/journal', label: 'Journal', Icon: ScrollIcon } as const
+
+type Tab = (typeof NAV)[number] | typeof JOURNAL_TAB
+
+/**
+ * The Journal tab appears only once a quest has been finished (P24). The route itself stays
+ * reachable and shows its own locked panel, so a bookmark never 404s.
+ */
+function useNavItems(): readonly Tab[] {
+  const profile = useProfile()
+  const unlocked = isJournalUnlocked(profile.data?.quests_completed)
+  if (!unlocked) return NAV
+  const tabs: Tab[] = [...NAV]
+  tabs.splice(NAV.length - 1, 0, JOURNAL_TAB) // before Settings, which stays last
+  return tabs
+}
 
 export function Logo({ className = '' }: { className?: string }) {
   return (
@@ -67,6 +85,7 @@ export function HudLevel() {
  * in wide multi-column grids over the scenery instead of one narrow column.
  */
 export function AppShell({ children, tone = 'day' }: { children: ReactNode; tone?: 'day' | 'dusk' }) {
+  const navItems = useNavItems()
   return (
     <div className="relative min-h-dvh">
       <World tone={tone} className="fixed inset-0 z-0 h-full w-full" />
@@ -81,7 +100,7 @@ export function AppShell({ children, tone = 'day' }: { children: ReactNode; tone
             </Link>
             <nav aria-label="Main" className="fixed inset-x-0 bottom-0 border-t-4 border-wood-dark bg-forest lg:static lg:flex-1 lg:border-0 lg:bg-transparent">
               <ul className="flex justify-around lg:justify-center lg:gap-1">
-                {NAV.map(({ to, label, Icon }) => (
+                {navItems.map(({ to, label, Icon }) => (
                   <li key={to}>
                     <NavLink
                       to={to}
