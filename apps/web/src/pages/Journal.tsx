@@ -199,6 +199,16 @@ export function Journal() {
     }
   }
 
+  // Without the local flag the unlock depends on the server count, so claiming "sealed" before
+  // the profile arrives would flash the locked panel at a player who has finished dozens.
+  if (!unlocked && profile.isPending) {
+    return (
+      <p role="status" className="parchment p-5">
+        Looking for your journal…
+      </p>
+    )
+  }
+
   if (!unlocked) {
     return (
       <div className="mx-auto max-w-2xl">
@@ -229,9 +239,11 @@ export function Journal() {
           <ScrollIcon className="text-gold" /> Your Journal
         </h1>
         <p className="mt-1 text-lg text-parchment-deep">
-          {entries?.length
-            ? `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}, kept on this device.`
-            : 'Nothing in it yet.'}
+          {entries === null && storable
+            ? 'Opening…'
+            : entries?.length
+              ? `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}, kept on this device.`
+              : 'Nothing in it yet.'}
         </p>
       </div>
 
