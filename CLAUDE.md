@@ -37,6 +37,8 @@ npm run check:csp                           # render.yaml CSP vs the real dist/ 
 # Data / infra
 python scripts/create_indexes.py            # collections + Atlas vector indexes
 python scripts/seed_places.py --bbox "<S,W,N,E>" --city "<name>"
+python scripts/fetch_events.py --city "Pune, Maharashtra, India" --dry-run   # live events: funnel only, no writes
+python scripts/fetch_events.py --city "Pune, Maharashtra, India" --from-cache  # re-run the filters on the cached payload (no SerpApi call)
 bash scripts/smoke_test.sh                  # hits healthz + generate against API_BASE_URL
 python scripts/bench_llm.py --base-url http://localhost:8080 --n 20   # gate G1 latency → evals/
 python scripts/scan_secrets.py              # secret scan: tracked files + every commit

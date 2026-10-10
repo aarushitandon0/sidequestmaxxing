@@ -223,3 +223,79 @@ def test_serpapi_error_falls_back_to_the_status_on_a_non_json_body() -> None:
         request=_httpx.Request("GET", "https://serpapi.com/search?api_key=SECRET"),
     )
     assert fetch_events._serpapi_error(res) == "HTTP 502"
+
+
+# --- review fix pass ------------------------------------------------------------------------
+
+
+class _StubEmbedder:
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        return [[0.1] * EMBEDDING_DIM for _ in texts]
+
+
+def test_raw_entry_pairs_with_its_event_despite_whitespace_in_the_title() -> None:
+    """`SerpEvent` strips titles, so the raw lookup must strip too or `ticket_info` is lost."""
+    payload = {
+        "events_results": [
+            {
+                "title": "Pottery Workshop\n",
+                "date": {"when": "Sat, Oct 11, 7:00 AM"},
+                "ticket_info": [{"link_type": "tickets"}],
+            }
+        ]
+    }
+    pairs = fetch_events._pair_with_raw(payload)
+    assert len(pairs) == 1
+    raw, event = pairs[0]
+    assert event.title == "Pottery Workshop"
+    assert raw.get("ticket_info")
+
+
+async def test_a_document_that_is_not_a_valid_event_doc_is_dropped_before_upsert(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    counts: Counter[str] = Counter()
+
+    async def _resolve(*args: object, **kwargs: object) -> Resolved:
+        return OUTDOOR.model_copy(update={"kind": "concert_hall"})
+
+    monkeypatch.setattr(fetch_events, "_resolve", _resolve)
+    doc = await fetch_events._keep_or_count(
+        raw={},
+        event=EV,
+        counts=counts,
+        embedder=_StubEmbedder(),
+        db=None,
+        geo_client=None,
+        centre=(18.52, 73.85),
+        bbox=(18.4, 73.7, 18.6, 73.9),
+        nominatim_url="http://nominatim.invalid/search",
+        today=NOW.date(),
+        now=NOW,
+    )
+    assert doc is None
+    assert counts["invalid"] == 1
+
+
+async def test_a_valid_event_still_produces_a_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    counts: Counter[str] = Counter()
+
+    async def _resolve(*args: object, **kwargs: object) -> Resolved:
+        return OUTDOOR
+
+    monkeypatch.setattr(fetch_events, "_resolve", _resolve)
+    doc = await fetch_events._keep_or_count(
+        raw={},
+        event=EV,
+        counts=counts,
+        embedder=_StubEmbedder(),
+        db=None,
+        geo_client=None,
+        centre=(18.52, 73.85),
+        bbox=(18.4, 73.7, 18.6, 73.9),
+        nominatim_url="http://nominatim.invalid/search",
+        today=NOW.date(),
+        now=NOW,
+    )
+    assert doc is not None
+    assert counts["invalid"] == 0

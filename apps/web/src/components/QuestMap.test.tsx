@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { Happening, PlaceRef } from '../lib/types'
@@ -26,6 +26,16 @@ describe('QuestMap', () => {
     expect(container.querySelector('.sqm-pin-event')).not.toBeNull()
     expect(container.querySelector('.sqm-pin-quest')).toBeNull()
     expect(screen.getByText(/event: heritage walk at shaniwar wada/i, { selector: '.sr-only' })).toBeInTheDocument()
+  })
+
+  it('treats an event title as text in the tooltip too, never as markup', () => {
+    const title = '<img src=y onerror="alert(1)">Walk'
+    const { container } = render(<QuestMap place={PLACE} happening={{ ...HAPPENING, title }} />)
+    const marker = container.querySelector('.leaflet-marker-icon')
+    expect(marker).not.toBeNull()
+    fireEvent.mouseOver(marker as Element)
+    expect(container.querySelector('.leaflet-tooltip')).not.toBeNull()
+    expect(container.querySelector('img[src="y"]')).toBeNull()
   })
 
   it('treats an event title as text, never as markup', () => {

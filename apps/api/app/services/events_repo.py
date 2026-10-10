@@ -10,6 +10,7 @@ import logging
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 
+from pydantic import ValidationError
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
@@ -120,7 +121,16 @@ async def search_events(
     except PyMongoError as exc:
         log.warning("event search failed", extra={"error_type": type(exc).__name__})
         return []
-    candidates = [to_event_candidate(d, lat, lng) for d in docs]
+    candidates: list[Candidate] = []
+    for doc in docs:
+        try:
+            candidates.append(to_event_candidate(doc, lat, lng))
+        except (ValidationError, KeyError, TypeError, ValueError) as exc:
+            # One odd document must not fail the whole quest request (invariant 5).
+            log.warning(
+                "skipped unusable event document",
+                extra={"event_id": str(doc.get("_id")), "error_type": type(exc).__name__},
+            )
     return [c for c in candidates if c.distance_m <= radius_m]
 
 

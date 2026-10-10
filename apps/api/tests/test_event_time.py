@@ -58,3 +58,26 @@ def test_late_night_event_does_not_overlap_daylight() -> None:
         18.52,
         73.86,
     )
+
+
+# --- review fix pass ------------------------------------------------------------------------
+
+
+def test_borrowed_meridiem_is_flipped_rather_than_producing_a_backwards_range() -> None:
+    """`11:00 - 1:00 PM` is 11:00-13:00 local, never 23:00 the following lunchtime."""
+    window = parse_event_window(
+        "Oct 11", "Sat, Oct 11, 11:00 - 1:00 PM", today=date(2026, 10, 11), tz_offset_min=330
+    )
+    assert window == (
+        datetime(2026, 10, 11, 5, 30, tzinfo=UTC),
+        datetime(2026, 10, 11, 7, 30, tzinfo=UTC),
+    )
+
+
+def test_a_window_longer_than_twelve_hours_is_refused() -> None:
+    assert (
+        parse_event_window(
+            "Oct 11", "Sat, Oct 11, 1:00 AM - 11:00 PM", today=date(2026, 10, 11), tz_offset_min=330
+        )
+        is None
+    )

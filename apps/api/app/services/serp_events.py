@@ -67,6 +67,17 @@ def parse_events(payload: dict[str, Any]) -> list[SerpEvent]:
     return out
 
 
+def safe_listing_url(url: str | None) -> str | None:
+    """`url` when it is a plain http(s) link, else None.
+
+    The listing URL is third-party text that the web app renders as an `href`, so a
+    `javascript:` or `data:` scheme would be one tap from running script in our own origin.
+    """
+    if not url:
+        return None
+    return url if re.match(r"^https?://", url.strip(), re.IGNORECASE) else None
+
+
 def sanitize_event(e: SerpEvent) -> SerpEvent:
     """A copy whose prompt-reachable strings are safe. `description` is never stored."""
     return e.model_copy(
@@ -74,6 +85,7 @@ def sanitize_event(e: SerpEvent) -> SerpEvent:
             "title": sanitize_place_name(e.title),
             "venue_name": sanitize_place_name(e.venue_name) if e.venue_name else "",
             "when_text": sanitize_tags_summary(e.when_text),
+            "url": safe_listing_url(e.url),
         }
     )
 
@@ -96,7 +108,9 @@ def is_ticketed(payload_entry: dict[str, Any], e: SerpEvent) -> bool:
 
 
 def _fragment(key: str, value: str, max_value_len: int | None = None) -> str | None:
-    value = re.sub(r"[:,]", " ", value)
+    # `;` and `=` are the separators of this channel: a value carrying them could forge a
+    # field the model reads ("when=... ; kind=temple"), so they go the way of `:` and `,`.
+    value = re.sub(r"[:,;=]", " ", value)
     value = re.sub(r"\s+", " ", value).strip()
     if max_value_len is not None and len(value) > max_value_len:
         words = value[:max_value_len].split(" ")[:-1] or value[:max_value_len].split(" ")

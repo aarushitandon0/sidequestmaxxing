@@ -233,3 +233,24 @@ def test_to_place_candidate_has_no_event_window() -> None:
         "loc": {"type": "Point", "coordinates": [LNG, LAT]},
     }
     assert to_candidate(doc, LAT, LNG).event_window is None
+
+
+# --- review fix pass ------------------------------------------------------------------------
+
+
+async def test_a_document_that_cannot_become_a_candidate_is_skipped_not_raised() -> None:
+    """One malformed `events` document must not 500 every quest request (invariant 5)."""
+    bad = event_doc("serp/bad", "Odd Venue", starts_at=NOW, ends_at=UNTIL, kind="concert_hall")
+    good = event_doc("serp/good", "Live Walk", starts_at=NOW, ends_at=UNTIL)
+    db = EventsDB(MatchingEvents([bad, good]))
+    out = await search_events(db, VEC, LAT, LNG, 2500, now=NOW, minutes_available=60)
+    assert [c.id for c in out] == ["serp/good"]
+
+
+async def test_a_document_missing_its_location_is_skipped() -> None:
+    bad = event_doc("serp/bad", "No Coords", starts_at=NOW, ends_at=UNTIL)
+    del bad["loc"]
+    good = event_doc("serp/good", "Live Walk", starts_at=NOW, ends_at=UNTIL)
+    db = EventsDB(MatchingEvents([bad, good]))
+    out = await search_events(db, VEC, LAT, LNG, 2500, now=NOW, minutes_available=60)
+    assert [c.id for c in out] == ["serp/good"]

@@ -84,7 +84,7 @@ Render (hosting), MongoDB Atlas (data), ElevenLabs (voice), Sentry (tracing), Ti
 | **ElevenLabs** | Spoken DM briefing so you can put the phone away | Demo clip, count of voice-first quests, char budget policy |
 | **MongoDB Atlas** | Atlas Vector Search over places + per-device quest memory | Index definitions, "avoid repeats" before/after example |
 | **Sentry** | Agent tracing across Scout → Quest Master → validators, latency/tokens | Trace screenshots + one real bug found/fixed using traces |
-| **SerpApi** (P23) | Live web search grounds quests in real happenings today: an offline fetch script reads Google's `events_results`, sanitizes and safety-filters them, and upserts them as a second vector-search source | `scripts/fetch_events.py`, the measured funnel in `evals/events_funnel.md`, a quest card showing a real event |
+| **SerpApi** (P23) | Live web search grounds quests in real happenings today: an offline fetch script reads Google's `events_results`, sanitizes and safety-filters them, and upserts them as a second vector-search source | `scripts/fetch_events.py`, the measured funnel in `evals/events_funnel.md`, the quest card's happening UI (`QuestCard.test.tsx`). **No live Pune listing has passed the safety filters yet** (funnel: 10 fetched, 0 kept), so the card may only be shown with a fixture `happening` until OQ-E1 is resolved — see `docs/DECISIONS.md` |
 | **DevRelay / session sharing** (optional) | Saved agent session embedded in post | Link/embed |
 
 > Priority if time runs short: **Render > Gemma > Tinker > ElevenLabs > MongoDB > Sentry**. (Render hosts everything; Gemma+Tinker are the "open" proof; the rest are cheap add-ons.) Confirm in the official prize rules whether one project may win several categories **[VERIFY]**.

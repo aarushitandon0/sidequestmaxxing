@@ -274,3 +274,26 @@ def test_parse_response_computes_tps_when_timings_missing() -> None:
 def test_messages_use_system_prompt_verbatim() -> None:
     messages = build_messages(inp())
     assert messages[0]["content"].startswith("You are the Dungeon Master of Sidequestmaxxing")
+
+
+# --- review fix pass: the fallback path must see the clock too (P23 V13) --------------------
+
+
+def test_fallback_result_threads_the_clock_so_v13_runs_on_the_fallback_path() -> None:
+    from datetime import timedelta
+
+    from app.agents.quest_master import fallback_result
+
+    too_late = Candidate(
+        id="serp/late",
+        name="Banyan Park",
+        kind="park",
+        distance_m=300,
+        indoor=False,
+        needs_daylight=False,
+        lat=18.5,
+        lng=73.8,
+        event_window=(NOW + timedelta(hours=6), NOW + timedelta(hours=8)),
+    )
+    result = fallback_result(inp(candidates=[too_late]), "llm_down")
+    assert result.quest.place_id != "serp/late"

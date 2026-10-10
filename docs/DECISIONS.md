@@ -368,3 +368,37 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
      events pack at all, so the outdoor free daylight premise has no supply from this source.
   Options: accept a documented local-time convention for meridiem-less times; drop the listing-URL
   requirement; or change data source. Not decided here.
+  Two further findings from the branch review, to be weighed before anyone "fixes" the parsing:
+  4. The live pack prints the date day-first (`"11 Oct"`), while `_DATE_RE` requires
+     `<Month> <day>`. So even with a meridiem convention adopted, every entry still lands in
+     `no_time` until the date shape is handled too.
+  5. The live pack carries no `description`, no `ticket_info` and no `venue`, so
+     `banned_terms_hit` and `is_ticketed` both read empty strings. The funnel's `banned 0` and
+     `ticketed 0` are therefore **not** evidence that the safety filters work on live data —
+     resolving (2) alone would open the gate to indoor paid theatre listings with almost no
+     filter. Any resolution of OQ-E1 must restore a real paid/indoor signal first.
+- **D-72 — a third-party listing URL is only ever a plain `http(s)` link.** `safe_listing_url`
+  in `app/services/serp_events.py` nulls any other scheme at ingest, and `safeListingUrl` in
+  `QuestCard.tsx` re-checks before it becomes an `href`. Without both, a listing whose `link` is
+  `javascript:…` would run script in our own origin one tap after "See the listing". Found in the
+  P23 branch review; covered by tests on both sides.
+- **D-73 — a borrowed meridiem is flipped rather than trusted, and no window may exceed 12 h.**
+  `"11:00 - 1:00 PM"` used to parse as 23:00-13:00 (a 14-hour window, stored and shown as
+  "Happening now" at 02:00). `_parse_times` now flips the borrowed meridiem when the start would
+  otherwise sit after the end, and `parse_event_window` refuses any window longer than
+  `MAX_DURATION_MIN` — a window that long means the string was misread.
+- **D-74 — one malformed `events` document cannot fail a quest request.** `search_events` builds
+  each candidate inside its own `try/except (ValidationError, KeyError, TypeError, ValueError)`
+  and skips what it cannot read, and `fetch_events.py` validates every document against
+  `EventDoc` before upsert (new funnel stage `invalid`). Previously a document whose `kind` was
+  not a `PlaceKind` raised straight out of the Scout into a 500 on `/v1/quests/generate`,
+  contradicting invariant 5 and spec section 7.2.
+- **D-75 — the fallback engine gets the player's clock.** `FallbackInput.now` is threaded from
+  `inp.context.local_time`, so V13 runs on the fallback path too. Before this, a quest the LLM
+  wrote to an event starting after the player's window was rejected twice by V13 and then issued
+  by the fallback engine, which had no clock and so skipped V13 entirely.
+- **D-76 — event text is escaped at both Leaflet sinks, and `;`/`=` are stripped from tag
+  values.** `bindTooltip` assigns its string with `innerHTML` just as `divIcon({ html })` does, so
+  an event title really did inject an element through the tooltip (test watched failing). And
+  `_fragment` now strips `;` and `=` as well as `:` and `,`, so a listing's `when_text` cannot
+  forge a tag field (`when=…; kind=temple`) in the summary the model reads.

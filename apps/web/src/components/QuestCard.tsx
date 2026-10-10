@@ -17,9 +17,18 @@ function timingLabel(h: Happening, now: Date): string | null {
   return now >= starts ? 'Happening now' : `Starts ${formatClockTime(starts)}`
 }
 
+/**
+ * A listing URL comes from a third-party feed, so only a plain http(s) link becomes an href —
+ * a `javascript:` or `data:` url would be one tap from running script in our own origin.
+ */
+function safeListingUrl(url: string | null): string | null {
+  return url && /^https?:\/\//i.test(url.trim()) ? url : null
+}
+
 /** The live event behind an event quest (MASTERSPEC P23 §7.1). */
 function HappeningNote({ happening }: { happening: Happening }) {
   const timing = timingLabel(happening, new Date())
+  const listing = safeListingUrl(happening.url)
   return (
     <div className="mx-4 mt-4 rounded-xl border-2 border-moss/50 bg-moss-pale p-3 sm:mx-5" aria-labelledby="happening-title">
       <p id="happening-title" className="hand-title text-2xl">
@@ -32,10 +41,10 @@ function HappeningNote({ happening }: { happening: Happening }) {
             <ClockIcon /> {timing}
           </span>
         ) : null}
-        {happening.url ? (
+        {listing ? (
           <a
             className="btn btn-ghost min-h-11 px-3 py-1 text-base"
-            href={happening.url}
+            href={listing}
             target="_blank"
             rel="noopener noreferrer"
           >

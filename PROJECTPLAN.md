@@ -160,6 +160,10 @@ Writing quality is the most heavily weighted criterion, then theme relevance, cr
 | Runs on CPU on Render | latency table + Render screenshot | |
 | Median screen share Y% | `evals/field.csv` | |
 | Voice quest works with phone in pocket | video | |
+| Live happenings are fetched, sanitized and safety-filtered before they can become quests | `scripts/fetch_events.py`, `apps/api/tests/test_fetch_events.py`, `test_serp_events.py`, `test_event_time.py` | 2026-10-10 |
+| 10 live Pune listings fetched, 0 passed the filters (the filters, and the spec's assumption about the source, both measured) | `evals/events_funnel.md`, `docs/DECISIONS.md` OQ-E1 | 2026-10-10 |
+| An event quest shows a timing chip and, when the source provides one, a listing link | `apps/web/src/components/QuestCard.test.tsx` (fixture `happening`; **not** a live event) | 2026-10-10 |
+| A quest card showing a *real* live event | **no artifact — do not claim** until a live listing survives the funnel (OQ-E1) | — |
 
 ### 8.4 Writing rules
 - First person, specific, no hype words ("revolutionary", "seamless").

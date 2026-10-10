@@ -16,6 +16,9 @@ from app.services.sun import daylight_window, is_polar_day
 DEFAULT_DURATION_MIN = 120
 """Assumed length of an event whose listing gives only a start time."""
 
+MAX_DURATION_MIN = 12 * 60
+"""Longest window we will believe. Anything longer means we read the string wrong."""
+
 _MONTHS: dict[str, int] = {
     name.lower(): number for number, name in enumerate(calendar.month_abbr) if number
 }
@@ -84,11 +87,15 @@ def _parse_times(text: str) -> tuple[tuple[int, int], tuple[int, int] | None] | 
     """((start_h, start_m), (end_h, end_m) | None) in local 24h time."""
     span = _TIME_RANGE_RE.search(text)
     if span is not None:
+        borrowed = span["ap1"] is None
         start_h = _to_24h(int(span["h1"]), span["ap1"] or span["ap2"])
         end_h = _to_24h(int(span["h2"]), span["ap2"])
-        if start_h is not None and end_h is not None:
-            return (start_h, int(span["m1"] or 0)), (end_h, int(span["m2"] or 0))
-        return None
+        if start_h is None or end_h is None:
+            return None
+        if borrowed and start_h > end_h:
+            # "11:00 - 1:00 PM" is 11:00-13:00: the start borrowed the wrong meridiem.
+            start_h = (start_h + 12) % 24
+        return (start_h, int(span["m1"] or 0)), (end_h, int(span["m2"] or 0))
     one = _TIME_RE.search(text)
     if one is None:
         return None
@@ -123,6 +130,9 @@ def parse_event_window(
     if ends_at <= starts_at:
         # An overnight range ("9:00 PM - 1:00 AM") ends on the following local day.
         ends_at += timedelta(days=1)
+    if ends_at - starts_at > timedelta(minutes=MAX_DURATION_MIN):
+        # A window this long means the string was misread; refusing beats a wrong datetime.
+        return None
     return starts_at, ends_at
 
 

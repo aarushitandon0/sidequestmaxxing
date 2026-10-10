@@ -6,7 +6,11 @@ import { useEffect, useRef } from 'react'
 import type { Coarse } from '../lib/location'
 import type { Happening, PlaceRef } from '../lib/types'
 
-/** Event titles come from a third-party feed, so they are text in this HTML, never markup. */
+/**
+ * Event titles come from a third-party feed, so they are text in this HTML, never markup.
+ * Both sinks need it: `divIcon({ html })` and `bindTooltip(<string>)` are each assigned with
+ * innerHTML by Leaflet.
+ */
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -50,7 +54,7 @@ export default function QuestMap({
       icon: pin(`sqm-pin ${happening ? 'sqm-pin-event' : 'sqm-pin-quest'}`, label),
       title: tooltip,
     })
-    target.addTo(map).bindTooltip(tooltip, { direction: 'top', offset: [0, -24] })
+    target.addTo(map).bindTooltip(esc(tooltip), { direction: 'top', offset: [0, -24] })
     const points: L.LatLngExpression[] = [[place.lat, place.lng]]
     if (you) {
       L.marker([you.lat, you.lng], { icon: pin('sqm-pin sqm-pin-you', 'You are here (approximate)') }).addTo(map)

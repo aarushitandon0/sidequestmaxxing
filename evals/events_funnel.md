@@ -79,4 +79,7 @@ non-ticketed) would drop most of this set on purpose.
 ## Status
 
 This is the spec section 13 risk landing, measured rather than assumed. The decision about how
-to respond belongs to the project owner, not to this script. See `docs/DECISIONS.md` (OQ-E1).
+to respond belongs to the project owner, not to this script. See `docs/DECISIONS.md` (OQ-E1),
+which also records two findings from the branch review: the live pack prints dates day-first
+(`"11 Oct"`), which the date regex does not read, and it carries no `description`/`ticket_info`,
+so `banned 0` and `ticketed 0` above say nothing about how those filters behave on live data.

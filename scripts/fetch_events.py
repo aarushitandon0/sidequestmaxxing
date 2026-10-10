@@ -30,11 +30,12 @@ from typing import Any
 
 import _bootstrap
 import httpx
+from pydantic import ValidationError
 from pymongo import MongoClient, UpdateOne
 from pymongo.errors import PyMongoError
 
 from app.config import Settings
-from app.models.event import SerpEvent
+from app.models.event import EventDoc, SerpEvent
 from app.services.embeddings import FastEmbedder
 from app.services.event_time import overlaps_daylight, parse_event_window
 from app.services.geo import cell5
@@ -74,6 +75,7 @@ FUNNEL_STAGES: tuple[str, ...] = (
     "no_time",
     "night",
     "no_coords",
+    "invalid",
     "kept",
     "upserted",
 )
@@ -305,7 +307,9 @@ def main(argv: list[str] | None = None) -> int:
 def _pair_with_raw(payload: dict[str, Any]) -> list[tuple[dict[str, Any], SerpEvent]]:
     """Each parsed event beside its raw entry, so `ticket_info` stays reachable."""
     raw_entries = [r for r in payload.get("events_results") or [] if isinstance(r, dict)]
-    by_title = {str(r.get("title")): r for r in raw_entries if r.get("title")}
+    # `SerpEvent` strips its strings, so the raw side is keyed the same way or the lookup
+    # misses and `ticket_info` — the only authoritative paid signal — is silently lost.
+    by_title = {str(r.get("title")).strip(): r for r in raw_entries if r.get("title")}
     return [(by_title.get(event.title, {}), event) for event in parse_events(payload)]
 
 
@@ -351,7 +355,16 @@ async def _keep_or_count(
     tags = event_tags_summary(event, resolved.kind if resolved.place_id else None)
     text = f"{event.title}. {event.venue_name}. {tags}".strip()
     embedding = (await embedder.embed([text]))[0]
-    return build_event_doc(event, window, resolved, tags, embedding, now)
+    doc = build_event_doc(event, window, resolved, tags, embedding, now)
+    try:
+        EventDoc.model_validate(doc)
+    except ValidationError as exc:
+        # A document the API could not read back would 500 a quest request, so it never
+        # reaches the collection (invariant 5).
+        log.warning("event document failed validation: %s", exc.error_count())
+        counts["invalid"] += 1
+        return None
+    return doc
 
 
 async def _run(

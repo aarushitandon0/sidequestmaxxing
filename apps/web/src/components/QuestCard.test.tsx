@@ -117,6 +117,12 @@ describe('QuestCard happening (P23)', () => {
     expect(screen.queryByRole('link', { name: /listing/i })).not.toBeInTheDocument()
   })
 
+  it('refuses a listing url that is not http(s)', () => {
+    setup({ quest: withHappening({ url: "javascript:alert('x')" }) })
+    expect(screen.queryByRole('link', { name: /listing/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Happening now')).toBeInTheDocument()
+  })
+
   it('renders no chip and no link for an ordinary place quest', () => {
     setup()
     expect(screen.queryByText(/^(happening now|starts )/i)).not.toBeInTheDocument()

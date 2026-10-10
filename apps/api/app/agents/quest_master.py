@@ -244,6 +244,7 @@ def fallback_result(
                 recent_categories=tuple(inp.recent_categories),
                 indoor_only=inp.context.indoor_only,
                 daylight_minutes_left=inp.context.daylight_minutes_left,
+                now=inp.context.local_time,
                 seed=inp.seed,
             )
         )
