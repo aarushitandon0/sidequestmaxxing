@@ -248,7 +248,7 @@ function Hero() {
             <br />A more interesting you.
           </p>
           <p className="mx-auto mt-4 max-w-xl rounded-2xl bg-parchment-light/85 px-4 py-3 text-lg text-ink-soft lg:mx-0">
-            Your neighbourhood is full of side quests… you just need a reason to explore. Side quest maxxing means chasing
+            Your neighbourhood is full of side quests… you just need a reason to explore. Sidequestmaxxing means chasing
             fun, unexpected, secondary goals outside your routine, to build skills, break monotony, and spark joy.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
