@@ -128,3 +128,102 @@ async def test_place_search_failure_is_not_fatal() -> None:
 async def test_no_database_configured() -> None:
     result = await scout(req(), ctx(), DEVICE, None, FakeEmbedder(), now=NOW)
     assert result.candidates == [] and result.query_text
+
+
+# --- P23: live event candidates --------------------------------------------------------------
+
+
+def event_docs() -> list[dict[str, Any]]:
+    """Two events inside the radius: one outdoor daylight walk, one indoor talk."""
+    starts = NOW - timedelta(minutes=20)  # already running: still joinable
+    ends = NOW + timedelta(minutes=40)
+    base = {
+        "tags_summary": "event=heritage walk; venue=Shaniwar Wada",
+        "cell5": "tek3r",
+        "starts_at": starts,
+        "ends_at": ends,
+        "when_text": "Sat, Oct 11, 7:00 AM",
+        "url": "https://example.invalid/walk",
+        "score": 0.97,
+    }
+    return [
+        {
+            "_id": "serp/walk",
+            "name": "Heritage Walk",
+            "kind": "heritage",
+            "loc": {"type": "Point", "coordinates": [LNG, LAT + 0.001]},
+            "indoor": False,
+            "needs_daylight": True,
+            **base,
+        },
+        {
+            "_id": "serp/talk",
+            "name": "Indoor Talk",
+            "kind": "museum",
+            "loc": {"type": "Point", "coordinates": [LNG, LAT - 0.001]},
+            "indoor": True,
+            "needs_daylight": False,
+            **base,
+        },
+    ]
+
+
+def db_with_events_and_places() -> FakeDB:
+    return FakeDB(places=FakeCollection(places()), events=FakeCollection(event_docs()))
+
+
+async def test_scout_includes_event_candidates() -> None:
+    result = await run(db_with_events_and_places())
+    assert any(c.id.startswith("serp/") for c in result.candidates)
+
+
+async def test_scout_drops_event_needing_daylight_when_none_left() -> None:
+    result = await run(db_with_events_and_places(), context=ctx(daylight=10))
+    assert not any(c.id.startswith("serp/") and c.needs_daylight for c in result.candidates)
+    assert "serp/walk" not in [c.id for c in result.candidates]
+
+
+async def test_scout_caps_events_at_three_of_eight() -> None:
+    many = []
+    for i in range(6):
+        doc = dict(event_docs()[0])
+        doc["_id"] = f"serp/walk{i}"
+        doc["kind"] = ("heritage", "park", "garden", "market", "temple", "artwork")[i]
+        many.append(doc)
+    db = FakeDB(places=FakeCollection(places()), events=FakeCollection(many))
+    result = await run(db)
+    assert sum(1 for c in result.candidates if c.id.startswith("serp/")) <= 3
+    assert len(result.candidates) <= 8
+
+
+async def test_scout_survives_an_events_collection_that_errors() -> None:
+    db = FakeDB(
+        places=FakeCollection(places()),
+        events=FakeCollection([], raise_exc=OperationFailure("no such index: events_vec")),
+    )
+    result = await run(db)
+    assert result.candidates
+    assert not any(c.id.startswith("serp/") for c in result.candidates)
+
+
+async def test_scout_with_an_empty_events_collection_is_places_only() -> None:
+    plain = await run(FakeDB(places=FakeCollection(places())))
+    with_empty = await run(FakeDB(places=FakeCollection(places()), events=FakeCollection([])))
+    assert [c.id for c in plain.candidates] == [c.id for c in with_empty.candidates]
+
+
+async def test_scout_drops_an_event_seen_in_the_last_fortnight() -> None:
+    """Events go through the same memory filter as places, keyed on the candidate id."""
+    memories = [
+        {"category": "explorer", "place_id": "serp/walk", "ts": NOW - timedelta(days=2),
+         "embedding": [1.0] + [0.0] * 383, "score": 0.9},
+    ]  # fmt: skip
+    db = FakeDB(
+        places=FakeCollection(places()),
+        events=FakeCollection(event_docs()),
+        memories=FakeCollection(memories),
+    )
+    result = await run(db)
+    ids = [c.id for c in result.candidates]
+    assert "serp/walk" not in ids
+    assert "serp/talk" in ids

@@ -63,6 +63,9 @@ class QuestMasterInput:
             minutes_available=self.minutes_available,
             indoor_only=self.context.indoor_only,
             daylight_minutes_left=self.context.daylight_minutes_left,
+            # Gives V13 a clock. Without it V13 is a no-op and an event the Scout time-filtered
+            # on the way in would get no second check on the way out (P23).
+            now=self.context.local_time,
         )
 
 
@@ -241,6 +244,7 @@ def fallback_result(
                 recent_categories=tuple(inp.recent_categories),
                 indoor_only=inp.context.indoor_only,
                 daylight_minutes_left=inp.context.daylight_minutes_left,
+                now=inp.context.local_time,
                 seed=inp.seed,
             )
         )

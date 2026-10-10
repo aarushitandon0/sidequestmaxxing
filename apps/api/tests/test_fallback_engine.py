@@ -1,6 +1,7 @@
 """Fallback engine: deterministic, always valid (V1-V11), sensible choices."""
 
 import random
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -127,3 +128,30 @@ def test_persona_voice_changes_briefing(persona: str) -> None:
     from app.agents.fallback_engine import _OPENERS
 
     assert any(q.briefing.startswith(o) for o in _OPENERS[persona])  # type: ignore[index]
+
+
+# --- review fix pass: the fallback path needs a clock, or V13 never runs there (P23) --------
+
+
+def test_validation_context_carries_the_clock_so_v13_runs_on_the_fallback_path() -> None:
+    now = datetime(2026, 10, 11, 4, 0, tzinfo=UTC)
+    assert FallbackInput(minutes_available=60, now=now).validation_context().now == now
+
+
+def test_fallback_never_issues_an_event_that_starts_after_the_players_window() -> None:
+    now = datetime(2026, 10, 11, 4, 0, tzinfo=UTC)
+    too_late = Candidate(
+        id="serp/late",
+        name="Banyan Park",
+        kind="park",
+        distance_m=300,
+        indoor=False,
+        needs_daylight=False,
+        lat=18.5,
+        lng=73.8,
+        event_window=(now + timedelta(hours=6), now + timedelta(hours=8)),
+    )
+    quest = generate_fallback_quest(
+        FallbackInput(minutes_available=60, candidates=[too_late], now=now, seed=7)
+    )
+    assert quest.place_id != "serp/late"

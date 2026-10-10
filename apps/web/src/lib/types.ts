@@ -35,6 +35,18 @@ export interface PlaceRef {
   lng: number
 }
 
+/**
+ * A live event behind an event quest (P23). Server-owned: the LLM never writes it.
+ * `url` is null when the source carries no listing link (docs/DECISIONS.md OQ-E1).
+ */
+export interface Happening {
+  title: string
+  when_text: string
+  starts_at: string
+  ends_at: string
+  url: string | null
+}
+
 export interface Quest {
   id: string
   title: string
@@ -50,6 +62,8 @@ export interface Quest {
   xp: number
   distance_m: number | null
   place: PlaceRef | null
+  /** Set when the quest is backed by a live event; absent on ordinary place quests. */
+  happening?: Happening | null
   /** Set by the client from the X-Quest-Source header; absent on quests stored before P21. */
   source?: QuestSource | null
 }

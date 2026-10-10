@@ -9,13 +9,17 @@ from typing import Any
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from pymongo.errors import ServerSelectionTimeoutError
 
 from app.config import Settings
 from app.deps import get_db, get_embedder_dep, get_llm_client, get_weather_client_dep, utc_now
 from app.main import create_app
-from app.models.quest import Quest
+from app.models.quest import Quest, QuestDraft, llm_json_schema
+from app.services.events_repo import to_event_candidate
 from app.services.llm_client import CONNECT_TIMEOUT_S, LLMClient
+from app.services.places_repo import Candidate
+from app.services.quest_flow import hydrate
 from app.services.weather import WeatherClient
 from app.validators.core import ValidationContext, validate_quest
 from tests.fakes import FakeDB, FakeEmbedder, MemCollection, place_doc
@@ -170,8 +174,10 @@ def test_generate_falls_back_fast_when_llm_unreachable() -> None:
     from app.services.places_repo import to_candidate
 
     cands = [to_candidate(p, LAT, LNG) for p in places()]
-    assert validate_quest(q.model_dump(include=set(type(q).model_fields) - {
-        "id", "rarity", "xp", "distance_m", "place"}), ctx, cands).ok  # fmt: skip
+    # Strip every server-owned field by derivation, so a new one (P23's `happening`) cannot
+    # silently leak into the draft this re-validates.
+    draft_only = set(QuestDraft.model_fields)
+    assert validate_quest(q.model_dump(include=draft_only), ctx, cands).ok
     assert h.db["quests"].docs[0]["source"] == "fallback"
 
 
@@ -334,3 +340,121 @@ def test_no_user_coordinates_reach_any_collection() -> None:
     # ("checkin") is kept, which is not a position.
     assert "checkin" not in completion
     assert set(completion["verification"]) == {"method", "match", "confidence", "seen"}
+
+
+# --- P23: server-owned `happening` -----------------------------------------------------------
+
+EVENT_STARTS = NOW - timedelta(minutes=20)
+EVENT_ENDS = NOW + timedelta(minutes=70)
+
+
+def event_docs() -> list[dict[str, Any]]:
+    return [
+        {
+            "_id": "serp/walk",
+            "name": "Heritage Walk at Shaniwar Wada",
+            "kind": "heritage",
+            "tags_summary": "event=heritage walk; venue=Shaniwar Wada",
+            "loc": {"type": "Point", "coordinates": [LNG, LAT + 0.001]},
+            "cell5": "tek3r",
+            "indoor": False,
+            "needs_daylight": True,
+            "starts_at": EVENT_STARTS,
+            "ends_at": EVENT_ENDS,
+            "when_text": "Wed, Oct 7, 2:40 PM",
+            "url": "https://example.invalid/walk",
+            "score": 0.97,
+        }
+    ]
+
+
+def event_candidate(cid: str = "serp/walk") -> Candidate:
+    return to_event_candidate(event_docs()[0] | {"_id": cid}, LAT, LNG)
+
+
+def place_candidate(cid: str = "p/park1") -> Candidate:
+    return Candidate(id=cid, name="Park One", kind="park", distance_m=111, lat=LAT, lng=LNG)
+
+
+def test_questdraft_rejects_happening() -> None:
+    """`happening` is server-owned: the LLM must not be able to write it (invariant 3)."""
+    with pytest.raises(ValidationError):
+        QuestDraft(**{**LLM_QUEST, "happening": {"title": "x"}})
+
+
+def test_llm_json_schema_has_no_happening_property() -> None:
+    assert "happening" not in llm_json_schema()["properties"]
+
+
+def test_hydrate_fills_happening_from_an_event_candidate() -> None:
+    draft = QuestDraft.model_validate({**LLM_QUEST, "place_id": "serp/walk"})
+    q = hydrate(draft, [event_candidate()], "qid")
+    assert q.happening is not None
+    assert q.happening.title == "Heritage Walk at Shaniwar Wada"
+    assert q.happening.when_text == "Wed, Oct 7, 2:40 PM"
+    assert q.happening.url == "https://example.invalid/walk"
+    assert (q.happening.starts_at, q.happening.ends_at) == (EVENT_STARTS, EVENT_ENDS)
+    assert q.place is not None  # an event still has a location
+    assert q.place.name == "Heritage Walk at Shaniwar Wada"
+
+
+def test_hydrate_leaves_happening_none_for_a_place() -> None:
+    draft = QuestDraft.model_validate({**LLM_QUEST, "place_id": "p/park1"})
+    assert hydrate(draft, [place_candidate()], "qid").happening is None
+
+
+def test_hydrate_leaves_happening_none_for_a_placeless_quest() -> None:
+    draft = QuestDraft.model_validate(
+        {**LLM_QUEST, "place_id": None, "verification": {"method": "honor"}}
+    )
+    assert hydrate(draft, [], "qid").happening is None
+
+
+def test_generate_surfaces_happening_for_an_event_quest() -> None:
+    event_llm_quest = {**LLM_QUEST, "place_id": "serp/walk"}
+    llm, _ = mock_llm(json.dumps(event_llm_quest))
+    db = FakeDB(places=MemCollection(places()), events=MemCollection(event_docs()))
+    res = Harness(llm, db).generate()
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["happening"] is not None
+    assert body["happening"]["url"] == "https://example.invalid/walk"
+
+
+def test_generate_succeeds_with_events_collection_empty() -> None:
+    llm, _ = mock_llm(json.dumps(LLM_QUEST))
+    db = FakeDB(places=MemCollection(places()), events=MemCollection([]))
+    res = Harness(llm, db).generate()
+    assert res.status_code == 200, res.text
+    assert res.json()["happening"] is None
+
+
+def test_generate_succeeds_with_events_empty_and_llm_down() -> None:
+    """The pre-P23 fallback path must be untouched (invariant 5)."""
+    db = FakeDB(places=MemCollection(places()), events=MemCollection([]))
+    res = Harness(None, db).generate()
+    assert res.status_code == 200, res.text
+    assert res.headers["X-Quest-Source"] == "fallback"
+    assert res.json()["happening"] is None
+
+
+def test_generate_succeeds_when_the_events_collection_errors() -> None:
+    db = FakeDB(
+        places=MemCollection(places()),
+        events=MemCollection([], fail=ServerSelectionTimeoutError("events unreachable")),
+    )
+    llm, _ = mock_llm(json.dumps(LLM_QUEST))
+    res = Harness(llm, db).generate()
+    assert res.status_code == 200, res.text
+    assert res.json()["happening"] is None
+
+
+def test_stored_quest_document_has_no_event_url_or_coordinates() -> None:
+    """`happening` is response-shaped; the stored document keeps its existing privacy promise."""
+    llm, _ = mock_llm(json.dumps({**LLM_QUEST, "place_id": "serp/walk"}))
+    db = FakeDB(places=MemCollection(places()), events=MemCollection(event_docs()))
+    h = Harness(llm, db)
+    h.generate()
+    [doc] = h.db["quests"].docs
+    stored = json.dumps(doc, default=str)
+    assert "18.52049" not in stored and "73.85612" not in stored

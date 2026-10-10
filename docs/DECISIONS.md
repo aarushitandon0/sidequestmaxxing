@@ -302,3 +302,103 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   `evals/field.md`, gate G2 on a WebGPU device, and the first Render deploy (the real API host still
   has to replace the placeholder in the CSP `connect-src`).
 - **Next:** first Render deploy, then the DEV post.
+
+### 2026-10-10 — Session 12 (scrollytelling performance and scenery)
+
+- **Did:** reworked the motion layer of the story page only (`apps/web/src/story/Story.tsx`,
+  `apps/web/src/story/story.css`); no copy, palette, component or API change. The nine scenes each
+  ran their own scroll + resize listener and wrote `--progress` raw, and scene 6 called `setState`
+  once per frame, re-rendering seven medallions at scroll rate. They now share one listener and one
+  rAF loop that eases each scene's progress with a ~70 ms time constant, skips writes under 0.001,
+  parks itself when everything has settled, and quantises the React callback to twelfths. Animated
+  nodes declare `will-change` and use `translate3d`; `--progress` is registered with `@property`;
+  stages get `contain: layout paint`. Scene span went 130vh → 170vh, so the beats play out over
+  ~0.7 screens instead of ~0.3.
+- **Scenery (D-69):** every scene now sits on the hero's `World` SVG behind a veil that is bright
+  under the text and clear at the edges, page-coloured at the seams so the scenes read as one
+  landscape; four `world-*` classes frame a different stretch of it, and it parallaxes with
+  `--progress`. Walk Mode uses the `dusk` tone. Added hover/focus lift on parchment cards, chips,
+  medallions and receipt rows, a scroll cue in the hero, and a top progress rail driven by
+  `animation-timeline: scroll()` (absent where unsupported — no listener either way).
+- **Two real bugs fixed, both pre-existing:** Walk Mode's dim was `progress * 0.86`, so its
+  light-on-dark text was unreadable for the first half of the scene (now `0.3 + progress * 0.56`,
+  same end state); and on phones every tall scene overflowed its sticky stage and lost 54–358 px
+  off the bottom. MASTERSPEC §11.4 requires sticky scenes mobile-first at 360 px, so the fix was to
+  size the content down in portrait (smaller phone mocks, tighter type and spacing, the decorative
+  quest art hidden below `sm`) rather than drop the pinning.
+- **Verified this session:** `lint`, `typecheck`, 119 vitest tests, 10 Playwright e2e tests and
+  `check:csp` (12 routes) all pass; measured in headless Chromium that every scene fits its stage
+  with no clipping at 412×823, 390×844, 360×740 and 1280×800, with no horizontal scroll.
+- **Known limit, not faked:** at 360×740 and above nothing clips; at 360×640 (a short, older
+  phone) four scenes still overflow by 29–81 px. That is better than before this session but not
+  zero, and fixing it properly means cutting scene copy, which is a content decision.
+- **Still open:** unchanged — P17, one real field test, gate G2, and the first Render deploy.
+
+## P23 — live Pune happenings (2026-10-10)
+
+- **D-70 — SerpApi's `google_events` engine is gone; we read `events_results` off
+  `engine=google`.** The spec was written against the dedicated Google Events engine. It now
+  returns `400 Unsupported ``google_events`` search engine.` SerpApi's changelog for 2026-08-24
+  says: *"The Google Events API has been deprecated and no longer accepts new requests. Event
+  data is still available via the `events_results` field of the Google Search API."*
+  `scripts/fetch_events.py` therefore sends `engine=google` (constant `SERPAPI_ENGINE`) and
+  parses the same `events_results` array. Verified against SerpApi's own changelog and a real
+  response, not assumed.
+  Sources: <https://serpapi.com/blog/serpapi-weekly-changelog-august-24-30-2026/>,
+  <https://serpapi.com/google-events-api>.
+- **D-71 — `SERPAPI_API_KEY` is never logged, and neither is a request URL.** The first real run
+  printed the key, because `httpx`'s own INFO logger prints the full request URL and ours carries
+  `api_key` as a query parameter. `fetch_events.py` now calls `silence_http_loggers()` before the
+  first request and raises `SerpApiError` carrying only SerpApi's own message, never httpx's
+  default (which embeds the URL). Covered by
+  `test_http_loggers_are_silenced_so_the_api_key_cannot_be_logged` and
+  `test_serpapi_error_reports_the_api_message_not_the_url`.
+- **OQ-E1 (open) — the replacement payload cannot satisfy the spec as written.** Measured funnel
+  in `evals/events_funnel.md`: 4 searches, 10 events, 0 kept. The `engine=google` events pack
+  carries `title`, `type`, `date` (`"11 Oct"`), `time` (`"5:00"`, no meridiem), `address` and
+  `thumbnail` — and no `link`, no `venue` object and no `ticket_info`. Three consequences, each
+  needing an owner decision rather than a code ruling:
+  1. No listing URL exists, so spec section 7.1's "show the listing URL" cannot be honoured from
+     this source.
+  2. `time: "5:00"` is ambiguous between 05:00 and 17:00. Guessing would produce exactly the
+     plausible-but-wrong datetime the design forbids, so every entry is currently dropped as
+     `no_time`.
+  3. The only query that returns events (`events in Pune`) returns indoor paid theatre and
+     concert listings. `workshops in Pune`, `heritage walk Pune` and `nature walk Pune` return no
+     events pack at all, so the outdoor free daylight premise has no supply from this source.
+  Options: accept a documented local-time convention for meridiem-less times; drop the listing-URL
+  requirement; or change data source. Not decided here.
+  Two further findings from the branch review, to be weighed before anyone "fixes" the parsing:
+  4. The live pack prints the date day-first (`"11 Oct"`), while `_DATE_RE` requires
+     `<Month> <day>`. So even with a meridiem convention adopted, every entry still lands in
+     `no_time` until the date shape is handled too.
+  5. The live pack carries no `description`, no `ticket_info` and no `venue`, so
+     `banned_terms_hit` and `is_ticketed` both read empty strings. The funnel's `banned 0` and
+     `ticketed 0` are therefore **not** evidence that the safety filters work on live data —
+     resolving (2) alone would open the gate to indoor paid theatre listings with almost no
+     filter. Any resolution of OQ-E1 must restore a real paid/indoor signal first.
+- **D-72 — a third-party listing URL is only ever a plain `http(s)` link.** `safe_listing_url`
+  in `app/services/serp_events.py` nulls any other scheme at ingest, and `safeListingUrl` in
+  `QuestCard.tsx` re-checks before it becomes an `href`. Without both, a listing whose `link` is
+  `javascript:…` would run script in our own origin one tap after "See the listing". Found in the
+  P23 branch review; covered by tests on both sides.
+- **D-73 — a borrowed meridiem is flipped rather than trusted, and no window may exceed 12 h.**
+  `"11:00 - 1:00 PM"` used to parse as 23:00-13:00 (a 14-hour window, stored and shown as
+  "Happening now" at 02:00). `_parse_times` now flips the borrowed meridiem when the start would
+  otherwise sit after the end, and `parse_event_window` refuses any window longer than
+  `MAX_DURATION_MIN` — a window that long means the string was misread.
+- **D-74 — one malformed `events` document cannot fail a quest request.** `search_events` builds
+  each candidate inside its own `try/except (ValidationError, KeyError, TypeError, ValueError)`
+  and skips what it cannot read, and `fetch_events.py` validates every document against
+  `EventDoc` before upsert (new funnel stage `invalid`). Previously a document whose `kind` was
+  not a `PlaceKind` raised straight out of the Scout into a 500 on `/v1/quests/generate`,
+  contradicting invariant 5 and spec section 7.2.
+- **D-75 — the fallback engine gets the player's clock.** `FallbackInput.now` is threaded from
+  `inp.context.local_time`, so V13 runs on the fallback path too. Before this, a quest the LLM
+  wrote to an event starting after the player's window was rejected twice by V13 and then issued
+  by the fallback engine, which had no clock and so skipped V13 entirely.
+- **D-76 — event text is escaped at both Leaflet sinks, and `;`/`=` are stripped from tag
+  values.** `bindTooltip` assigns its string with `innerHTML` just as `divIcon({ html })` does, so
+  an event title really did inject an element through the tooltip (test watched failing). And
+  `_fragment` now strips `;` and `=` as well as `:` and `,`, so a listing's `when_text` cannot
+  forge a tag field (`when=…; kind=temple`) in the summary the model reads.

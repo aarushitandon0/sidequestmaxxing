@@ -233,6 +233,23 @@ Walking is modelled at 75 metres per minute. Output: at most eight candidates.
 If the database is unreachable, the Scout does not raise. It returns nothing and the pipeline
 produces a place-less quest instead.
 
+**Live happenings (P23).** A second vector search runs over an `events` collection, and up to
+three of the eight candidates may be a live event rather than a place. Events lead the merge so
+that the per-kind cap cannot starve them, a V13 validator rejects any quest to an event that is
+over or that starts after your window, and the quest card shows the event's timing (and its
+listing, when the source gives one). The collection is written only by an offline script,
+`scripts/fetch_events.py`, which reads Google's `events_results` through SerpApi, sanitizes every
+string, and drops anything ticketed, indoor-at-night, banned by the safety lint, or whose time it
+cannot read without guessing. Nothing about the request path depends on SerpApi: with the
+collection empty, quest generation is exactly as it was.
+
+Honest status: on 2026-10-10 that script fetched 10 Pune listings and kept **zero**. Google's
+events pack no longer carries a listing URL, a venue object, ticket info, or an unambiguous time
+("5:00" could be 05:00 or 17:00), and the one query that returns anything returns indoor paid
+theatre. The funnel is in [`evals/events_funnel.md`](evals/events_funnel.md) and the open question
+is OQ-E1 in [`docs/DECISIONS.md`](docs/DECISIONS.md). The pipeline is real and tested end to end;
+the supply is not there yet, and the card has only ever been shown with a fixture event.
+
 ### 3. Memory check
 
 A second `$vectorSearch`, this time over `memories`, filtered to your device id and the last

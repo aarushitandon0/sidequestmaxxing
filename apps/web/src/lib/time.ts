@@ -14,3 +14,8 @@ export function localDateKey(d: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+
+/** Clock time for display in the viewer's own locale, e.g. "7:00 am". */
+export function formatClockTime(d: Date): string {
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+}

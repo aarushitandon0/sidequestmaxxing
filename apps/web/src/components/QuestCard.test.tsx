@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { Happening, Quest } from '../lib/types'
 import { QUEST } from '../test/fixtures'
 import { QuestCard } from './QuestCard'
 
@@ -58,5 +59,80 @@ describe('QuestCard', () => {
   it('offers Listen only when voice is on', () => {
     setup({ voice: false })
     expect(screen.queryByRole('button', { name: /listen/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('QuestCard happening (P23)', () => {
+  const NOW = new Date('2026-10-11T09:00:00+05:30')
+  const happening: Happening = {
+    title: 'Heritage Walk at Shaniwar Wada',
+    when_text: 'Sat, Oct 11, 7:00 am',
+    starts_at: '2026-10-11T07:00:00+05:30',
+    ends_at: '2026-10-11T10:00:00+05:30',
+    url: 'https://example.org/heritage-walk',
+  }
+  const withHappening = (over: Partial<Happening> = {}): Quest => ({
+    ...QUEST,
+    happening: { ...happening, ...over },
+  })
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(NOW)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('shows a timing chip when the quest is a happening', () => {
+    setup({ quest: withHappening() })
+    expect(screen.getByText(/^(happening now|starts )/i)).toBeInTheDocument()
+  })
+
+  it('names the happening and its when_text', () => {
+    setup({ quest: withHappening() })
+    expect(screen.getByText('Heritage Walk at Shaniwar Wada')).toBeInTheDocument()
+    expect(screen.getByText('Sat, Oct 11, 7:00 am')).toBeInTheDocument()
+  })
+
+  it('says "Starts" with a local time for a happening that has not begun', () => {
+    setup({
+      quest: withHappening({ starts_at: '2026-10-11T17:00:00+05:30', ends_at: '2026-10-11T19:00:00+05:30' }),
+    })
+    expect(screen.getByText(/^starts\s+\S/i)).toBeInTheDocument()
+    expect(screen.queryByText('Happening now')).not.toBeInTheDocument()
+  })
+
+  it('links to the listing with a safe external target', () => {
+    setup({ quest: withHappening() })
+    const link = screen.getByRole('link', { name: /listing/i })
+    expect(link).toHaveAttribute('href', happening.url)
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link.getAttribute('rel')).toContain('noopener')
+  })
+
+  it('omits the link when the happening has no url, keeping the chip (OQ-E1)', () => {
+    setup({ quest: withHappening({ url: null }) })
+    expect(screen.getByText('Happening now')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /listing/i })).not.toBeInTheDocument()
+  })
+
+  it('refuses a listing url that is not http(s)', () => {
+    setup({ quest: withHappening({ url: "javascript:alert('x')" }) })
+    expect(screen.queryByRole('link', { name: /listing/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Happening now')).toBeInTheDocument()
+  })
+
+  it('renders no chip and no link for an ordinary place quest', () => {
+    setup()
+    expect(screen.queryByText(/^(happening now|starts )/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /listing/i })).not.toBeInTheDocument()
+  })
+
+  it('shows no timing chip once the happening has ended', () => {
+    setup({
+      quest: withHappening({ starts_at: '2026-10-11T06:00:00+05:30', ends_at: '2026-10-11T08:00:00+05:30' }),
+    })
+    expect(screen.queryByText(/^(happening now|starts )/i)).not.toBeInTheDocument()
   })
 })

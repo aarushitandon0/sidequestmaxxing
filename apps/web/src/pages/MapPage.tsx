@@ -18,7 +18,7 @@ export function MapPage() {
       {place && run.quest ? (
         <div className="grid gap-5 lg:grid-cols-[1fr_340px] lg:gap-6">
           <Suspense fallback={<div className="parchment h-[60dvh] lg:h-[calc(100dvh-12rem)]" aria-hidden="true" />}>
-            <QuestMap place={place} className="h-[60dvh] border-4 border-wood shadow-xl lg:h-[calc(100dvh-12rem)]" />
+            <QuestMap place={place} happening={run.quest.happening} className="h-[60dvh] border-4 border-wood shadow-xl lg:h-[calc(100dvh-12rem)]" />
           </Suspense>
           <aside className="parchment flex flex-col gap-3 self-start p-5" aria-label="Quest place">
             <img src={CATEGORY_ART[run.quest.category]} alt="" className="h-36 w-full rounded-xl object-cover" />

@@ -93,7 +93,7 @@ export function QuestPage() {
       </div>
       {quest.place ? (
         <Suspense fallback={<div className="parchment h-72 lg:h-full" aria-hidden="true" />}>
-          <QuestMap place={quest.place} className="h-72 border-4 border-wood shadow-xl lg:sticky lg:top-28 lg:h-[calc(100dvh-10rem)]" />
+          <QuestMap place={quest.place} happening={quest.happening} className="h-72 border-4 border-wood shadow-xl lg:sticky lg:top-28 lg:h-[calc(100dvh-10rem)]" />
         </Suspense>
       ) : (
         <aside className="parchment hidden flex-col items-center justify-center gap-3 p-6 text-center lg:flex" aria-label="Where">

@@ -8,6 +8,7 @@ raises: if no candidate fits, it falls back to a place-less quest.
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from app.models.enums import CATEGORIES, Category, Mood, Persona, PlaceKind
 from app.models.quest import QuestDraft, QuestVerification
@@ -27,6 +28,7 @@ class FallbackInput:
     recent_categories: Sequence[Category] = ()
     indoor_only: bool = False
     daylight_minutes_left: int | None = None
+    now: datetime | None = None  # the player's clock; without it V13 cannot run here (P23)
     seed: int = 0
 
     def validation_context(self) -> ValidationContext:
@@ -34,6 +36,7 @@ class FallbackInput:
             minutes_available=self.minutes_available,
             indoor_only=self.indoor_only,
             daylight_minutes_left=self.daylight_minutes_left,
+            now=self.now,
         )
 
 

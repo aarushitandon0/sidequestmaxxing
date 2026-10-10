@@ -15,6 +15,7 @@ dist/
 .DS_Store
 data/overpass_*.json
 !data/overpass_sample.json
+data/serpapi_*.json
 *.tsbuildinfo
 dev-dist/
 dist-e2e/

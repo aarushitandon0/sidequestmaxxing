@@ -4,12 +4,20 @@ import L from 'leaflet'
 import { useEffect, useRef } from 'react'
 
 import type { Coarse } from '../lib/location'
-import type { PlaceRef } from '../lib/types'
+import type { Happening, PlaceRef } from '../lib/types'
+
+/**
+ * Event titles come from a third-party feed, so they are text in this HTML, never markup.
+ * Both sinks need it: `divIcon({ html })` and `bindTooltip(<string>)` are each assigned with
+ * innerHTML by Leaflet.
+ */
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 const pin = (cls: string, label: string) =>
   L.divIcon({
     className: '',
-    html: `<span class="${cls}" aria-hidden="true"></span><span class="sr-only">${label}</span>`,
+    html: `<span class="${cls}" aria-hidden="true"></span><span class="sr-only">${esc(label)}</span>`,
     iconSize: [28, 28],
     iconAnchor: [14, 28],
   })
@@ -18,8 +26,20 @@ const pin = (cls: string, label: string) =>
  * OpenStreetMap via Leaflet (MASTERSPEC §11.1 #9) with the required attribution.
  * Loaded lazily so it never weighs on the first load. Shows the quest place; the player's
  * approximate area only if they shared it (never sent anywhere from here).
+ * An event-backed quest (P23) gets a diamond pin, so the distinction is shape and label, not
+ * colour alone (MASTERSPEC §11.2).
  */
-export default function QuestMap({ place, you, className = '' }: { place: PlaceRef; you?: Coarse | null; className?: string }) {
+export default function QuestMap({
+  place,
+  you,
+  happening,
+  className = '',
+}: {
+  place: PlaceRef
+  you?: Coarse | null
+  happening?: Happening | null
+  className?: string
+}) {
   const el = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (!el.current) return
@@ -28,8 +48,13 @@ export default function QuestMap({ place, you, className = '' }: { place: PlaceR
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map)
-    const target = L.marker([place.lat, place.lng], { icon: pin('sqm-pin sqm-pin-quest', place.name), title: place.name })
-    target.addTo(map).bindTooltip(place.name, { direction: 'top', offset: [0, -24] })
+    const label = happening ? `Event: ${happening.title}` : place.name
+    const tooltip = happening ? `${place.name} · ${happening.title}` : place.name
+    const target = L.marker([place.lat, place.lng], {
+      icon: pin(`sqm-pin ${happening ? 'sqm-pin-event' : 'sqm-pin-quest'}`, label),
+      title: tooltip,
+    })
+    target.addTo(map).bindTooltip(esc(tooltip), { direction: 'top', offset: [0, -24] })
     const points: L.LatLngExpression[] = [[place.lat, place.lng]]
     if (you) {
       L.marker([you.lat, you.lng], { icon: pin('sqm-pin sqm-pin-you', 'You are here (approximate)') }).addTo(map)
@@ -41,7 +66,7 @@ export default function QuestMap({ place, you, className = '' }: { place: PlaceR
     return () => {
       map.remove()
     }
-  }, [place, you])
+  }, [place, you, happening])
   return (
     <div
       ref={el}
