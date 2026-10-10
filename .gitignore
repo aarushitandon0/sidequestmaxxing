@@ -26,3 +26,7 @@ playwright-report/
 training/data/
 models/
 !apps/api/app/models/
+
+# Rendered video/audio for the intro film (large binaries; keep out of git)
+media/*.mp4
+media/*.wav
