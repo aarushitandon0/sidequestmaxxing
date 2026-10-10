@@ -53,6 +53,8 @@ def new_quest_doc(
         "created_at": now,
         "request_digest": request_digest(req),
         "quest": quest.model_dump(mode="json"),
+        # Which Dungeon Master wrote it: the spoken voice has to match the briefing's tone.
+        "persona": req.persona,
         "source": source,
         "model": model,
         "status": "offered",

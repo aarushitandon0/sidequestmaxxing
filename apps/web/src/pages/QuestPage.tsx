@@ -33,7 +33,7 @@ export function QuestPage() {
     try {
       const state = await api.acceptQuest(quest.id)
       accept(state.accepted_at ?? new Date().toISOString())
-      if (prefs.voice) void speakQuest({ questId: quest.id, kind: 'briefing', text: quest.briefing }) // spoken; the phone can go away
+      if (prefs.voice) void speakQuest({ questId: quest.id, kind: 'briefing', text: quest.briefing, persona: prefs.persona }) // spoken; the phone can go away
       navigate('/walk')
     } catch (err) {
       if (err instanceof ApiError && err.code === 'quest_expired') {

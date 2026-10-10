@@ -29,9 +29,15 @@ export function Walk() {
   const quest = run.quest
   const elapsed = elapsedSeconds(run, now)
 
-  const repeat = () => void speakQuest({ questId: quest.id, kind: 'briefing', text: quest.briefing })
+  const repeat = () =>
+    void speakQuest({ questId: quest.id, kind: 'briefing', text: quest.briefing, persona: prefs.persona })
   const hint = () =>
-    void speakQuest({ questId: quest.id, kind: 'hint', text: `${quest.objective} ${quest.off_screen_tip}` })
+    void speakQuest({
+      questId: quest.id,
+      kind: 'hint',
+      text: `${quest.objective} ${quest.off_screen_tip}`,
+      persona: prefs.persona,
+    })
 
   const stop = async () => {
     stopVoice()

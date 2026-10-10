@@ -591,3 +591,24 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   costs another blueprint push. Verified end to end before pushing: health `db: ok`, a real
   London quest ("Gallery Eye at British Museum"), and
   `Access-Control-Allow-Origin: https://sqm-web.onrender.com`.
+- **D-99 — one voice per Dungeon Master, in both voice layers.** All four personas read in the
+  same flat default voice, which made the Dungeon Master feel like one bored narrator. Two
+  fixes, because there are two voice paths (MASTERSPEC §2.4). Server: `/v1/tts` now resolves
+  the persona (stored on the quest doc since this change; older quests and recaps fall back to
+  the device's current persona) and sends both a per-persona voice id
+  (`ELEVENLABS_VOICE_ID_<PERSONA>`, each falling back to `ELEVENLABS_VOICE_ID`) and a
+  per-persona `voice_settings` object. Field names, defaults and meanings were read off the
+  official Text-to-Speech reference rather than assumed: `stability` (0.5 default; lower =
+  wider emotional range), `similarity_boost` (0.75), `style` (0, exaggerates the voice's own
+  character), `speed` (1.0) and `use_speaker_boost` — `speed` lives *inside* `voice_settings`.
+  So dramatic is slow, unstable and heavily styled; nature_nerd is quick and bright; sarcastic
+  is flat and brisk; chill is steady. Browser fallback: `speech.ts` now assigns each persona a
+  *different* `SpeechSynthesisVoice` (ranked by the voice names Windows/macOS/iOS/Android/Chrome
+  actually ship, English-only, greedy so no two personas share one) plus its own rate and
+  pitch, so the personas still differ on a machine with a single voice installed.
+  Voice ids are deliberately **not** hardcoded: ElevenLabs' help centre says default voices
+  expire 2026-12-31 and are only available to accounts created before March 2026, and points at
+  `GET /v1/voices` for current ids. Open question: the four `ELEVENLABS_VOICE_ID_*` keys are not
+  in `render.yaml` yet (env changes there need the owner's sign-off), so production uses one
+  ElevenLabs voice with four deliveries until they are added.
+

@@ -6,6 +6,8 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.models.enums import Persona
+
 
 class Settings(BaseSettings):
     # .env in the cwd, or the repo-root .env when running from apps/api.
@@ -26,9 +28,14 @@ class Settings(BaseSettings):
     llm_timeout_s: float = Field(default=25.0, gt=0, le=120)
     fallback_on_llm_error: bool = True
 
-    # Voice
+    # Voice. One voice per Dungeon Master: each persona falls back to ELEVENLABS_VOICE_ID.
+    # Voice ids come from GET /v1/voices (or the dashboard) — see docs/DECISIONS.md D-99.
     elevenlabs_api_key: str | None = None
     elevenlabs_voice_id: str | None = None
+    elevenlabs_voice_id_chill: str | None = None
+    elevenlabs_voice_id_dramatic: str | None = None
+    elevenlabs_voice_id_nature_nerd: str | None = None
+    elevenlabs_voice_id_sarcastic: str | None = None
     elevenlabs_model_id: str = "eleven_flash_v2_5"  # low-latency model, 0.5 credits/char
     elevenlabs_output_format: str = "mp3_44100_64"  # ≤128 kbps works on the free tier
     tts_daily_char_budget: int = Field(default=20000, ge=0)
@@ -48,6 +55,17 @@ class Settings(BaseSettings):
             if missing:
                 raise ValueError(f"missing required env in production: {', '.join(missing)}")
         return self
+
+    @property
+    def persona_voice_ids(self) -> dict[Persona, str]:
+        """Only the personas that have a voice id of their own."""
+        by_persona: dict[Persona, str | None] = {
+            "chill": self.elevenlabs_voice_id_chill,
+            "dramatic": self.elevenlabs_voice_id_dramatic,
+            "nature_nerd": self.elevenlabs_voice_id_nature_nerd,
+            "sarcastic": self.elevenlabs_voice_id_sarcastic,
+        }
+        return {p: v for p, v in by_persona.items() if v}
 
     @property
     def llm_url(self) -> str | None:

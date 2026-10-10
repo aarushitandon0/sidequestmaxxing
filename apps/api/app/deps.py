@@ -79,7 +79,7 @@ async def get_tts_client(request: Request) -> ElevenLabsClient | None:
         s = state.settings
         state.tts_client = build_tts_client(
             s.elevenlabs_api_key, s.elevenlabs_voice_id, s.elevenlabs_model_id,
-            s.elevenlabs_output_format, s.tts_timeout_s,
+            s.elevenlabs_output_format, s.tts_timeout_s, s.persona_voice_ids,
         )  # fmt: skip
     client: ElevenLabsClient | None = state.tts_client
     return client

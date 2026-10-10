@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const SCENES = ['hero', 'problem', 'dm', 'walk', 'verified', 'skills', 'open', 'try']
+const SCENES = ['hero', 'problem', 'dm', 'walk', 'verified', 'skills', 'try']
 
 test('every story scene is reachable by scrolling', async ({ page }) => {
   await page.goto('/')

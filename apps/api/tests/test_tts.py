@@ -13,7 +13,15 @@ from fastapi.testclient import TestClient
 from app.config import Settings
 from app.deps import get_db, get_tts_client, utc_now
 from app.main import create_app
-from app.services.tts import ElevenLabsClient, reserve_chars, tts_text, usage_id
+from app.models.enums import PERSONAS
+from app.services.tts import (
+    PERSONA_STYLE,
+    ElevenLabsClient,
+    build_tts_client,
+    reserve_chars,
+    tts_text,
+    usage_id,
+)
 from tests.fakes import FakeDB, MemCollection
 
 NOW = datetime(2026, 10, 7, 9, 30, tzinfo=UTC)
@@ -27,16 +35,36 @@ QUEST = {
 AUDIO = b"ID3\x04fake-mp3-frames" * 20
 
 
-def eleven(handler: Any) -> ElevenLabsClient:
+PERSONA_VOICES = {
+    "chill": "voice-chill",
+    "dramatic": "voice-dramatic",
+    "nature_nerd": "voice-nature",
+    "sarcastic": "voice-sarcastic",
+}
+
+
+def eleven(handler: Any, *, persona_voices: dict[str, str] | None = None) -> ElevenLabsClient:
     http = httpx.AsyncClient(
         base_url="https://api.elevenlabs.test", transport=httpx.MockTransport(handler)
     )
-    return ElevenLabsClient("test-key-not-real", "voice123", http=http)
+    return ElevenLabsClient(
+        "test-key-not-real",
+        "voice123",
+        http=http,
+        persona_voice_ids=persona_voices,  # type: ignore[arg-type]
+    )
 
 
 class Harness:
     def __init__(
-        self, handler: Any = None, *, budget: int = 20000, configured: bool = True
+        self,
+        handler: Any = None,
+        *,
+        budget: int = 20000,
+        configured: bool = True,
+        persona: str | None = None,
+        device_persona: str | None = None,
+        persona_voices: dict[str, str] | None = None,
     ) -> None:
         self.device = str(uuid.uuid4())
         self.calls: list[httpx.Request] = []
@@ -45,16 +73,28 @@ class Harness:
             self.calls.append(request)
             return (handler or ok)(request)
 
+        quest_doc: dict[str, Any] = {
+            "_id": QUEST_ID,
+            "device_id": self.device,
+            "status": "accepted",
+            "quest": QUEST,
+        }
+        if persona is not None:
+            quest_doc["persona"] = persona
+        users = MemCollection()
+        if device_persona is not None:
+            users.docs.append({"_id": self.device, "persona": device_persona})
         self.db = FakeDB(
-            quests=MemCollection(
-                [{"_id": QUEST_ID, "device_id": self.device, "status": "accepted", "quest": QUEST}]
-            ),
+            quests=MemCollection([quest_doc]),
             usage=MemCollection(),
+            users=users,
         )
         app = create_app(Settings(env="test", tts_daily_char_budget=budget))
         app.dependency_overrides[get_db] = lambda: self.db
         app.dependency_overrides[get_tts_client] = (
-            (lambda: eleven(record)) if configured else (lambda: None)
+            (lambda: eleven(record, persona_voices=persona_voices))
+            if configured
+            else (lambda: None)
         )
         app.dependency_overrides[utc_now] = lambda: NOW
         self.client = TestClient(app)
@@ -87,8 +127,56 @@ def test_success_streams_audio_and_counts_chars() -> None:
     assert call.url.path == "/v1/text-to-speech/voice123/stream"
     assert call.url.params["output_format"] == "mp3_44100_64"
     assert call.headers["xi-api-key"] == "test-key-not-real"
-    assert json.loads(call.content) == {"text": BRIEFING, "model_id": "eleven_flash_v2_5"}
+    assert json.loads(call.content) == {
+        "text": BRIEFING,
+        "model_id": "eleven_flash_v2_5",
+        "voice_settings": PERSONA_STYLE["chill"].as_settings(),
+    }
     assert h.used == len(BRIEFING)
+
+
+# ---------------------------------------------------------------- one voice per Dungeon Master
+
+
+@pytest.mark.parametrize("persona", list(PERSONAS))
+def test_each_persona_gets_its_own_voice_and_delivery(persona: str) -> None:
+    h = Harness(persona=persona, persona_voices=PERSONA_VOICES)
+    assert h.post().status_code == 200
+    [call] = h.calls
+    assert call.url.path == f"/v1/text-to-speech/{PERSONA_VOICES[persona]}/stream"
+    assert json.loads(call.content)["voice_settings"] == PERSONA_STYLE[persona].as_settings()
+
+
+def test_personas_do_not_all_sound_the_same() -> None:
+    """The four Dungeon Masters must differ even on a single shared voice id."""
+    settings = [tuple(sorted(PERSONA_STYLE[p].as_settings().items())) for p in PERSONAS]
+    assert len(set(settings)) == len(PERSONAS)
+    assert set(PERSONA_STYLE) == set(PERSONAS)
+
+
+def test_persona_falls_back_to_the_devices_current_dungeon_master() -> None:
+    """Quests stored before personas were saved: use the device's persona."""
+    h = Harness(device_persona="dramatic", persona_voices=PERSONA_VOICES)
+    assert h.post().status_code == 200
+    assert h.calls[0].url.path == "/v1/text-to-speech/voice-dramatic/stream"
+
+
+def test_unconfigured_persona_voice_uses_the_shared_voice_id() -> None:
+    h = Harness(persona="sarcastic", persona_voices={"chill": "voice-chill"})
+    assert h.post().status_code == 200
+    assert h.calls[0].url.path == "/v1/text-to-speech/voice123/stream"
+    assert (
+        json.loads(h.calls[0].content)["voice_settings"] == PERSONA_STYLE["sarcastic"].as_settings()
+    )
+
+
+def test_build_tts_client_needs_a_key_and_at_least_one_voice() -> None:
+    assert build_tts_client(None, "v1", "m", "f", 1.0) is None
+    assert build_tts_client("k", None, "m", "f", 1.0) is None
+    only_persona = build_tts_client("k", None, "m", "f", 1.0, {"dramatic": "voice-dramatic"})
+    assert only_persona is not None
+    assert only_persona.voice_for("dramatic") == "voice-dramatic"
+    assert only_persona.voice_for("chill") == "voice-dramatic"
 
 
 def test_hint_speaks_objective_and_tip() -> None:

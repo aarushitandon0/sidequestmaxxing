@@ -28,7 +28,6 @@ import storyData from './data.json'
 import type { StoryData } from './types'
 
 export const REPO_URL = 'https://github.com/aarushitandon0/sidequestmaxxing'
-export const RENDER_DEPLOY_URL = `https://render.com/deploy?repo=${REPO_URL}`
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
@@ -282,7 +281,7 @@ function Hero() {
 /* ---------------------------------------------------------------- 2. The problem */
 function Problem() {
   return (
-    <Scene id="problem" label="Scene 2 of 9" world="world-a">
+    <Scene id="problem" label="Scene 2 of 8" world="world-a">
       <div className="grid items-center gap-8 md:grid-cols-2">
         <div className="mx-auto h-[232px] w-[140px] overflow-hidden rounded-[1.8rem] border-[6px] border-ink bg-parchment-light p-2 sm:h-[420px] sm:w-[220px] sm:rounded-[2.2rem] sm:border-8" aria-hidden="true">
           <div className="feed flex flex-col gap-2">
@@ -332,12 +331,12 @@ function DungeonMaster() {
       return
     }
     setPlaying(true)
-    void speakText(DEMO_BRIEFING, () => setPlaying(false)).then((src) => {
+    void speakText(DEMO_BRIEFING, 'dramatic', () => setPlaying(false)).then((src) => {
       if (src === 'none') setPlaying(false)
     })
   }
   return (
-    <Scene id="dm" label="Scene 3 of 9" world="world-b">
+    <Scene id="dm" label="Scene 3 of 8" world="world-b">
       <h2 id="dm-title" className="hand-title text-center text-3xl sm:text-4xl">
         Your Dungeon Master writes one quest for a real place near you.
       </h2>
@@ -381,7 +380,7 @@ function DungeonMaster() {
 /* ---------------------------------------------------------------- 4. Walk Mode */
 function WalkScene() {
   return (
-    <Scene id="walk" label="Scene 4 of 9" tone="dusk" world="world-c" className="text-parchment-light">
+    <Scene id="walk" label="Scene 4 of 8" tone="dusk" world="world-c" className="text-parchment-light">
       <div className="walk-dim pointer-events-none absolute inset-0 bg-forest-deep" aria-hidden="true" />
       <div className="relative grid items-center gap-8 md:grid-cols-2">
         <svg viewBox="0 0 400 300" className="w-full rounded-3xl border-4 border-edge bg-parchment" role="img"
@@ -418,7 +417,7 @@ function WalkScene() {
 /* ---------------------------------------------------------------- 5. Verified on your device */
 function VerifiedScene() {
   return (
-    <Scene id="verified" label="Scene 5 of 9" world="world-d">
+    <Scene id="verified" label="Scene 5 of 8" world="world-d">
       <div className="grid items-center gap-8 md:grid-cols-2">
         <div className="relative mx-auto h-[230px] w-[135px] sm:h-[380px] sm:w-[220px]" aria-hidden="true">
           <div className="absolute inset-0 rounded-[1.8rem] border-[6px] border-ink bg-forest sm:rounded-[2.2rem] sm:border-8" />
@@ -458,7 +457,7 @@ const EXAMPLE_LEVELS = [2, 3, 1, 1, 2, 1, 2] // illustrative animation only — 
 function SkillScene() {
   const [p, setP] = useState(1)
   return (
-    <Scene id="skills" label="Scene 6 of 9" world="world-b" onProgress={setP}>
+    <Scene id="skills" label="Scene 6 of 8" world="world-b" onProgress={setP}>
       <h2 id="skills-title" className="hand-title text-center text-3xl sm:text-4xl">
         Grow seven skills by living them.
       </h2>
@@ -482,7 +481,7 @@ function SkillScene() {
 export function Receipts({ data }: { data: StoryData }) {
   if (!data.results && !data.field) return null
   return (
-    <Scene id="receipts" label="Scene 7 of 9" short world="world-a">
+    <Scene id="receipts" label="Scene 7 of 8" short world="world-a">
       <h2 id="receipts-title" className="hand-title text-center text-4xl">
         Receipts
       </h2>
@@ -531,55 +530,7 @@ export function Receipts({ data }: { data: StoryData }) {
   )
 }
 
-/* ---------------------------------------------------------------- 8. Open vs closed */
-const OPEN = [
-  ['Open-weight Dungeon Master', 'a small open model we can fine-tune, export and self-host, served by llama.cpp'],
-  ['llama.cpp', 'the inference runtime; the same binary runs on a laptop'],
-  ['Gemma 3n in the browser', 'on-device photo checks, so photos stay on the phone'],
-  ['OpenStreetMap, Overpass, Open-Meteo', 'open data, no API key, no per-call cost'],
-  ['BGE-small embeddings (fastembed)', 'semantic place search on a CPU'],
-] as const
-const HOSTED = [
-  ['Render', 'hosting for the web app, API and the private model service'],
-  ['MongoDB Atlas', 'places, quests and vector search'],
-  ['ElevenLabs', 'the spoken voice (falls back to your browser’s voice)'],
-  ['Sentry', 'tracing'],
-  ['Tinker', 'the fine-tuning service'],
-] as const
-
-function OpenClosed() {
-  return (
-    <Scene id="open" label="Scene 8 of 9" short world="world-d">
-      <h2 id="open-title" className="hand-title text-center text-4xl">
-        What's open, and what's hosted
-      </h2>
-      <p className="mx-auto max-w-2xl text-center text-lg text-ink-soft">
-        The core intelligence is open-weight and exportable. Every hosted piece has a fallback, so the game keeps working
-        when one goes down.
-      </p>
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <div className="parchment p-4">
-          <h3 className="flex items-center gap-2 text-2xl text-moss"><LeafIcon /> Open</h3>
-          <ul className="mt-2 space-y-2">
-            {OPEN.map(([name, why]) => (
-              <li key={name}><strong>{name}</strong>: {why}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="parchment p-4">
-          <h3 className="flex items-center gap-2 text-2xl text-wood"><CompassIcon /> Hosted / closed</h3>
-          <ul className="mt-2 space-y-2">
-            {HOSTED.map(([name, why]) => (
-              <li key={name}><strong>{name}</strong>: {why}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </Scene>
-  )
-}
-
-/* ---------------------------------------------------------------- 9. Try it */
+/* ---------------------------------------------------------------- 8. Try it */
 const STEPS = [
   ['1. You get a quest', 'The Dungeon Master sets the scene.'],
   ['2. You head out', 'The world becomes your map.'],
@@ -590,7 +541,7 @@ const STEPS = [
 
 function TryIt() {
   return (
-    <Scene id="try" label="Scene 9 of 9" short tone="dusk" world="world-c">
+    <Scene id="try" label="Scene 8 of 8" short tone="dusk" world="world-c">
       <div className="rounded-3xl bg-parchment-light/60 p-4">
         <h2 id="try-title" className="hand-title text-3xl">
           The Quest Unfolds <span className="text-lg text-ink-soft">A little story, told as you go.</span>
@@ -618,8 +569,7 @@ function TryIt() {
       <div className="mt-8 text-center">
         <StartLink />
         <p className="mt-4 flex flex-wrap justify-center gap-4 text-lg">
-          <a className="underline" href={REPO_URL}>Source code on GitHub</a>
-          <a className="underline" href={RENDER_DEPLOY_URL}>Deploy your own on Render</a>
+          <a className="underline" href={REPO_URL}>github.com/aarushitandon0/sidequestmaxxing</a>
         </p>
       </div>
 
@@ -662,7 +612,6 @@ export default function Story() {
         <VerifiedScene />
         <SkillScene />
         <Receipts data={storyData as StoryData} />
-        <OpenClosed />
         <TryIt />
       </main>
     </div>

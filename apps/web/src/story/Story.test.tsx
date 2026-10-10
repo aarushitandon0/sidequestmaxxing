@@ -14,7 +14,7 @@ describe('Story page', () => {
   it('renders all scenes with real headings (receipts hidden without eval data)', () => {
     wrap(<Story />)
     for (const name of [/sidequestmaxxing/i, /maps you stare at/i, /dungeon master writes one quest/i, /walk mode/i,
-      /verified on your device/i, /grow seven skills/i, /what's open/i, /the quest unfolds/i]) {
+      /verified on your device/i, /grow seven skills/i, /the quest unfolds/i]) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     }
     expect(screen.queryByRole('heading', { name: /receipts/i })).not.toBeInTheDocument()

@@ -40,11 +40,18 @@ function stubBrowser() {
   manifest = {}
   vi.stubGlobal('Audio', FakeAudio)
   vi.stubGlobal('caches', { open: async () => cache })
-  vi.stubGlobal('speechSynthesis', { cancel: vi.fn(), speak: (u: { text: string }) => spoken.push(u.text) })
+  vi.stubGlobal('speechSynthesis', {
+    cancel: vi.fn(),
+    getVoices: () => [],
+    speak: (u: { text: string }) => spoken.push(u.text),
+  })
   vi.stubGlobal('SpeechSynthesisUtterance', class {
     onend: (() => void) | null = null
     onerror: (() => void) | null = null
     rate = 1
+    pitch = 1
+    lang = 'en-US'
+    voice: unknown = null
     constructor(public text: string) {}
   })
   URL.createObjectURL = vi.fn(() => 'blob:fake')

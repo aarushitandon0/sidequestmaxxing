@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react'
 import { API_BASE_URL } from './api'
 import { getDeviceId } from './device'
 import { canSpeak, speak, stopSpeaking } from './speech'
+import type { Persona } from './types'
 
 /**
  * The Dungeon Master's voice (MASTERSPEC §2.4, P13). Order of preference:
@@ -21,6 +22,8 @@ export interface SpeakQuestOptions {
   questId: string
   kind?: VoiceKind
   text: string
+  /** Which Dungeon Master is speaking: picks the browser fallback's voice and delivery. */
+  persona?: Persona
   onEnd?: () => void
 }
 
@@ -162,8 +165,8 @@ async function playUrl(url: string, revoke: boolean, key: string, my: number, on
   }
 }
 
-function browserVoice(text: string, onEnd?: () => void): VoiceSource {
-  const ok = speak(text, () => {
+function browserVoice(text: string, persona: Persona, onEnd?: () => void): VoiceSource {
+  const ok = speak(text, persona, () => {
     setState({ playing: null })
     onEnd?.()
   })
@@ -171,7 +174,13 @@ function browserVoice(text: string, onEnd?: () => void): VoiceSource {
   return ok ? 'browser' : 'none'
 }
 
-export async function speakQuest({ questId, kind = 'briefing', text, onEnd }: SpeakQuestOptions): Promise<VoiceSource> {
+export async function speakQuest({
+  questId,
+  kind = 'briefing',
+  text,
+  persona = 'chill',
+  onEnd,
+}: SpeakQuestOptions): Promise<VoiceSource> {
   stopVoice()
   const my = token
   const key = `${questId}:${kind}`
@@ -187,17 +196,21 @@ export async function speakQuest({ questId, kind = 'briefing', text, onEnd }: Sp
     if (await playUrl(url, true, key, my, onEnd)) return cached ? 'cache' : 'elevenlabs'
   }
   if (my !== token) return 'none'
-  return browserVoice(text, onEnd)
+  return browserVoice(text, persona, onEnd)
 }
 
 /** Lines with no quest behind them (greetings, the story demo): demo clip, else browser voice. */
-export async function speakText(text: string, onEnd?: () => void): Promise<VoiceSource> {
+export async function speakText(
+  text: string,
+  persona: Persona = 'chill',
+  onEnd?: () => void,
+): Promise<VoiceSource> {
   stopVoice()
   const my = token
   const demo = await demoClip(text)
   if (demo && (await playUrl(demo, false, 'text', my, onEnd))) return 'demo'
   if (my !== token) return 'none'
-  return browserVoice(text, onEnd)
+  return browserVoice(text, persona, onEnd)
 }
 
 export function canUseVoice(): boolean {

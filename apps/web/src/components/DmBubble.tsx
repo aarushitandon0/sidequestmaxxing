@@ -51,7 +51,9 @@ export function DmBubble({ persona, text, speech, listenable = true, dark = fals
     setMine(true)
     setLoading(true)
     const words = speech ?? text
-    const started = questId ? speakQuest({ questId, kind, text: words, onEnd: finish }) : speakText(words, finish)
+    const started = questId
+      ? speakQuest({ questId, kind, text: words, persona, onEnd: finish })
+      : speakText(words, persona, finish)
     void started.then((source) => {
       setLoading(false)
       if (source === 'none') finish()

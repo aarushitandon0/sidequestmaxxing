@@ -16,11 +16,12 @@ from pymongo.errors import PyMongoError
 
 from app.deps import DeviceId, Now, get_db, get_tts_client
 from app.errors import ApiError, db_unavailable
+from app.models.enums import PERSONAS, Persona
 from app.observability import span
 from app.ratelimit import TTS_LIMIT, limiter
 from app.services.db import Doc
 from app.services.quests_repo import get_quest
-from app.services.recaps import get_recap
+from app.services.recaps import device_persona, get_recap
 from app.services.tts import (
     MAX_RECAP_TTS_CHARS,
     MAX_TTS_CHARS,
@@ -58,19 +59,26 @@ class TtsRequest(BaseModel):
         return self
 
 
-async def _text_for(db: AsyncDatabase[Doc], body: TtsRequest, device_id: str) -> str:
-    """The words to speak, read server-side from the device's own quest or recap."""
+async def _text_for(
+    db: AsyncDatabase[Doc], body: TtsRequest, device_id: str
+) -> tuple[str, Persona]:
+    """The words to speak and who speaks them, both read server-side from this device's data."""
     if body.kind == "recap":
         assert body.recap_id is not None
         recap = await get_recap(db, device_id, body.recap_id)
         if recap is None:
             raise ApiError(404, "recap_not_found", "That chronicle isn't in your quest log.")
-        return str(recap["text"])
+        recap_persona, _ = await device_persona(db, device_id)
+        return str(recap["text"]), recap_persona
     assert body.quest_id is not None
     doc = await get_quest(db, body.quest_id, device_id)
     if doc is None:
         raise ApiError(404, "quest_not_found", "That quest isn't in your quest log.")
-    return tts_text(doc["quest"], body.kind)
+    # Quests written before personas were stored (and any stray value) fall back to the
+    # device's current Dungeon Master.
+    stored = doc.get("persona")
+    persona: Persona = stored if stored in PERSONAS else (await device_persona(db, device_id))[0]
+    return tts_text(doc["quest"], body.kind), persona
 
 
 def unavailable() -> ApiError:
@@ -102,7 +110,7 @@ async def tts(
     now: Now,
 ) -> StreamingResponse:
     try:
-        text = await _text_for(db, body, device_id)
+        text, persona = await _text_for(db, body, device_id)
     except PyMongoError as exc:
         raise db_unavailable() from exc
 
@@ -121,9 +129,11 @@ async def tts(
         raise db_unavailable() from exc
 
     op_name = f"tts {client.model_id}"
-    with span("tts.elevenlabs", name=op_name, chars=len(text), kind=body.kind) as s:
+    with span(
+        "tts.elevenlabs", name=op_name, chars=len(text), kind=body.kind, persona=persona
+    ) as s:
         try:
-            stream = await client.stream(text)
+            stream = await client.stream(text, persona)
         except TtsUnavailableError as exc:
             s.set_data("error", exc.reason)
             log.warning("tts unavailable", extra={"reason": exc.reason})
