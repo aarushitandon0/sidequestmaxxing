@@ -453,3 +453,41 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   `night` are the safety invariants refusing nightlife, not bugs. `scripts/seed_dev_events.py`
   fabricates the missing daytime-outdoor case for local development; its documents carry
   `source="dev-seed"` and `dev/` ids and must never back a claim or a metric.
+- **D-84 — the template library is the primary engine outside a seeded city, not a fallback.**
+  `places` is filled offline by `seed_places.py` for one bounding box, and nothing fetches OSM on
+  a request path, so for every player outside a seeded city the Scout returns zero candidates and
+  always has. "Location is broken" was really "the map is empty": permission, rounding and the
+  request were all working, and the engine was correctly dropping to the seven place-less
+  templates every single time. Live Overpass lookup at request time was designed and deliberately
+  **not** built (it puts an unbounded third-party call in front of every quest); the chosen fix is
+  a much larger `ANYWHERE_TEMPLATES` library plus more seeded cities. Templates moved out of
+  `fallback_engine.py` into `agents/templates.py`; the engine keeps only selection logic.
+- **D-85 — five of the requested quests could not be built as written, and two not at all.**
+  The curated list was run through the production validators, not eyeballed. Dropped outright:
+  a guided **foraging** walk (§9.1 bans foraging; `forage` is a V4 banned term) and a **solo
+  overnight** (isolation, and the engine caps a quest at 120 minutes). Reworded: "don't turn back
+  until you're lost" → a street you have never walked plus five turns and your own way back
+  (`isolated` is banned, and getting a player lost on purpose is indefensible); "stay out until
+  it's dark" → ends before dark (V5); "cycle somewhere easier to drive" (`drive` is banned);
+  oldest/newest **pub** → oldest/newest cafe (§9.1 alcohol); park people-watching → a story about
+  the oldest tree (the P20 red-team's `surveil` rules). The validators were not touched
+  (invariant 1).
+- **D-86 — templates gained an hour window and a minimum slot, because the library needed them.**
+  Seven short templates never exposed it, but "watch the sunrise" offered at 6 PM and a
+  90-minute pottery class squeezed into a 20-minute slot by `min(activity_min, minutes_available)`
+  are both quests nobody can do. `Template.hours` gates on the player's local hour and is skipped
+  entirely when the engine has no clock rather than guessing; `Template.min_minutes` keeps long
+  quests out of short slots. `indoor` is now a field per template, replacing the
+  `INDOOR_PLACELESS` title set, so bad-weather filtering no longer depends on string matching.
+- **D-87 — "Fruit Run" had never once been served, and no test noticed.** Its objective said
+  "pick the best-looking fruit", which the P20 red-team's `pick_and_eat` rule reads as
+  harvesting; the rule exempts "pick **out**", which the template's own briefing already used.
+  `_passes` therefore rejected every composition of it and the engine moved on silently — a
+  template can fail validation forever and look exactly like a template that is merely unpopular.
+  The new table test in `tests/test_templates.py` runs every template through `validate_quest` and
+  the lint for every persona, which is what surfaced it; the objective now matches the briefing.
+- **D-88 — a place-less quest is no longer always `common`.** `test_generate_with_no_places...`
+  asserted `rarity == "common"`, which held only while every place-less template was ≤ 20 minutes.
+  With hour-long ones the quest seed (`uuid4().int`, random per request) made that assertion
+  seed-dependent, so it passed alone and failed in a full run. It now asserts
+  `rarity_for(est_minutes, None)` — stronger and deterministic — plus never `legendary` (D-35).

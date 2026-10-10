@@ -17,6 +17,7 @@ from app.deps import get_db, get_embedder_dep, get_llm_client, get_weather_clien
 from app.main import create_app
 from app.models.quest import Quest, QuestDraft, llm_json_schema
 from app.services.events_repo import to_event_candidate
+from app.services.game import rarity_for
 from app.services.llm_client import CONNECT_TIMEOUT_S, LLMClient
 from app.services.places_repo import Candidate
 from app.services.quest_flow import hydrate
@@ -191,7 +192,11 @@ def test_generate_with_no_places_returns_placeless_quest() -> None:
     h = Harness(None, FakeDB(places=MemCollection([])))
     body = h.generate().json()
     assert body["place_id"] is None and body["place"] is None and body["distance_m"] is None
-    assert body["rarity"] == "common"
+    # Rarity follows §8 from the minutes the engine actually chose. This used to assert
+    # "common" outright, which only held while every place-less template was 20 minutes or
+    # less; the P24 library has hour-long ones, so that assertion had become seed-dependent.
+    assert body["rarity"] == rarity_for(body["est_minutes"], None)
+    assert body["rarity"] != "legendary"  # D-35: never offered
 
 
 def test_minutes_are_capped_so_legendary_is_never_offered() -> None:
