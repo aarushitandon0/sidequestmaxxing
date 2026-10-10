@@ -39,6 +39,7 @@ python scripts/create_indexes.py            # collections + Atlas vector indexes
 python scripts/seed_places.py --bbox "<S,W,N,E>" --city "<name>"
 python scripts/seed_cities.py --dry-run         # all seeded cities: fetch + count, no writes
 python scripts/seed_cities.py --only pune london --from-cache   # re-seed from cached payloads
+python scripts/check_cities.py                  # every picker city has places the Scout can find
 python scripts/fetch_events.py --city "Pune, Maharashtra, India" --dry-run   # live events: funnel only, no writes
 python scripts/fetch_events.py --city "Pune, Maharashtra, India" --from-cache  # re-run the filters on the cached payload (no SerpApi call)
 bash scripts/smoke_test.sh                  # hits healthz + generate against API_BASE_URL

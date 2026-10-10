@@ -525,3 +525,14 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   (adding one is an API contract change). So the list is duplicated, with each centre being the
   middle of that city's bbox. The failure mode is specific and worth stating: a city listed here
   but never seeded promises a player real places and hands them place-less quests.
+- **D-95 — a city's place count proves Overpass answered, not that the Scout will find
+  anything.** `check_cities.py` counts what `search_places` actually pre-filters on: the 3x3
+  geohash-5 block around the city centre (`cells_around`). That is the number that decides
+  whether a player standing there gets a place-based quest. It exits non-zero on an empty city,
+  which is how Toronto and Singapore were caught sitting in the web app's picker with zero
+  places behind them after Overpass refused them three times.
+- **D-96 — Overpass 504s are the normal case for a city-sized bbox, not an error to pass on.**
+  Across the seeding runs, 7 of 12 cities returned 504 or 429 at least once; every one of them
+  succeeded on a retry, Toronto and Singapore only on a second invocation. The query asks for
+  `historic` with no value, which in a dense city is enormous (Berlin: 6,898 heritage rows,
+  London: 2,187). Final state: **12 cities, 35,916 places**, verified with `check_cities.py`.
