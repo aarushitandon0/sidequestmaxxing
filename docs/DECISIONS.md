@@ -333,3 +333,38 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   phone) four scenes still overflow by 29–81 px. That is better than before this session but not
   zero, and fixing it properly means cutting scene copy, which is a content decision.
 - **Still open:** unchanged — P17, one real field test, gate G2, and the first Render deploy.
+
+## P23 — live Pune happenings (2026-10-10)
+
+- **D-70 — SerpApi's `google_events` engine is gone; we read `events_results` off
+  `engine=google`.** The spec was written against the dedicated Google Events engine. It now
+  returns `400 Unsupported ``google_events`` search engine.` SerpApi's changelog for 2026-08-24
+  says: *"The Google Events API has been deprecated and no longer accepts new requests. Event
+  data is still available via the `events_results` field of the Google Search API."*
+  `scripts/fetch_events.py` therefore sends `engine=google` (constant `SERPAPI_ENGINE`) and
+  parses the same `events_results` array. Verified against SerpApi's own changelog and a real
+  response, not assumed.
+  Sources: <https://serpapi.com/blog/serpapi-weekly-changelog-august-24-30-2026/>,
+  <https://serpapi.com/google-events-api>.
+- **D-71 — `SERPAPI_API_KEY` is never logged, and neither is a request URL.** The first real run
+  printed the key, because `httpx`'s own INFO logger prints the full request URL and ours carries
+  `api_key` as a query parameter. `fetch_events.py` now calls `silence_http_loggers()` before the
+  first request and raises `SerpApiError` carrying only SerpApi's own message, never httpx's
+  default (which embeds the URL). Covered by
+  `test_http_loggers_are_silenced_so_the_api_key_cannot_be_logged` and
+  `test_serpapi_error_reports_the_api_message_not_the_url`.
+- **OQ-E1 (open) — the replacement payload cannot satisfy the spec as written.** Measured funnel
+  in `evals/events_funnel.md`: 4 searches, 10 events, 0 kept. The `engine=google` events pack
+  carries `title`, `type`, `date` (`"11 Oct"`), `time` (`"5:00"`, no meridiem), `address` and
+  `thumbnail` — and no `link`, no `venue` object and no `ticket_info`. Three consequences, each
+  needing an owner decision rather than a code ruling:
+  1. No listing URL exists, so spec section 7.1's "show the listing URL" cannot be honoured from
+     this source.
+  2. `time: "5:00"` is ambiguous between 05:00 and 17:00. Guessing would produce exactly the
+     plausible-but-wrong datetime the design forbids, so every entry is currently dropped as
+     `no_time`.
+  3. The only query that returns events (`events in Pune`) returns indoor paid theatre and
+     concert listings. `workshops in Pune`, `heritage walk Pune` and `nature walk Pune` return no
+     events pack at all, so the outdoor free daylight premise has no supply from this source.
+  Options: accept a documented local-time convention for meridiem-less times; drop the listing-URL
+  requirement; or change data source. Not decided here.
