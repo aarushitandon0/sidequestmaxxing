@@ -40,7 +40,12 @@ class Template:
     """Overrides the generic rotation where a quest needs its own warning."""
 
 
-_OUTDOOR_GREEN: tuple[PlaceKind, ...] = ("park", "garden", "nature_reserve", "other")
+# "other" is the catch-all for `tourism=attraction` and `natural=wood`, so it holds woods
+# and museums alike. Templates that need actual grass, a bench or a tree must not match it:
+# live generation produced "Laps of Museum of Illusions" and a quest to find the oldest tree
+# at an art gallery. Only wording that works at any outdoor spot gets _OUTDOOR_ANY.
+_OUTDOOR_GREEN: tuple[PlaceKind, ...] = ("park", "garden", "nature_reserve")
+_OUTDOOR_ANY: tuple[PlaceKind, ...] = (*_OUTDOOR_GREEN, "other")
 
 PLACE_TEMPLATES: tuple[Template, ...] = (
     # Viewpoints
@@ -62,7 +67,7 @@ PLACE_TEMPLATES: tuple[Template, ...] = (
              15, "checkin", None, _OUTDOOR_GREEN),
     Template("creative", "Colour Quest at {name}", "Find five different colours in nature at {name}.",
              "At {name}, look for five different natural colours: flowers, bark, moss, sky, anything.",
-             15, "photo", "a colourful flower or leaf", _OUTDOOR_GREEN),
+             15, "photo", "a colourful flower or leaf", _OUTDOOR_ANY),
     # Water (always from the path)
     Template("naturalist", "Water Watch at {name}", "From the main path at {name}, spot two kinds of birds.",
              "Walk to {name}, stay on the main path, and spot two different kinds of birds.",

@@ -568,3 +568,12 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   asset URL. Cloudflare Pages has the same API problem. Also checked and rejected: Hugging Face
   Spaces (July 2026 forum reports say Docker/Gradio on `cpu-basic` now needs PRO), Fly.io (no free
   tier for new orgs; trial then a card), Koyeb (reports of a card with a $29 pre-auth hold).
+- **D-97 — green-space templates must not match the `other` place kind.** `other` is the
+  catch-all in `classify()` for `tourism=attraction` and `natural=wood`, so it holds woods and
+  museums alike. With it in `_OUTDOOR_GREEN`, live generation against the seeded cities produced
+  "Laps of Museum of Illusions" (walk two laps of the main path, at a museum) and a quest to
+  invent a story about the oldest tree at an art gallery. Templates needing real grass, a bench
+  or a tree now use `_OUTDOOR_GREEN` (park, garden, nature_reserve); only wording that works at
+  any outdoor spot — Colour Quest — uses `_OUTDOOR_ANY`. Found by generating quests for eight
+  seeded cities against the real Atlas, which no unit test would have caught: every one of those
+  quests passed V1-V13, because nothing in the validators knows a gallery has no trees.

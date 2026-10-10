@@ -60,6 +60,8 @@ shortest part of the experience.** Every design decision below falls out of that
 | [Safety](#safety-how-the-system-refuses-to-get-you-hurt) | the red team, the escapes it found, the fixes |
 | [Privacy](#privacy-what-crosses-the-network-and-what-does-not) | the boundary, drawn exactly |
 | [On-device verification](#on-device-verification-with-gemma-3n) | Gemma 3n in the browser |
+| [The journal](#the-journal-photos-and-notes-that-never-leave-the-device) | photos and notes, kept on-device only |
+| [Picking a city](#2-scout-deterministic-plus-vector-search) | the city picker and the seeding scripts behind it, inside the Scout section |
 | [Voice](#voice-the-part-that-actually-gets-you-outside) | ElevenLabs and the fallback that matters more |
 | [Game rules](#game-rules-the-server-is-the-only-authority) | XP, rarity, levels, anti-abuse |
 | [Data model](#data-model) | collections, indexes, TTLs |
@@ -242,6 +244,21 @@ listing, when the source gives one). The collection is written only by an offlin
 string, and drops anything ticketed, indoor-at-night, banned by the safety lint, or whose time it
 cannot read without guessing. Nothing about the request path depends on SerpApi: with the
 collection empty, quest generation is exactly as it was.
+
+**Picking a city when your own location has nothing seeded (P24).** The Scout can only offer
+candidates from cells that have actually been seeded, so the onboarding consent screen offers
+"Pick a city instead" as a peer option to "Use my location", before any geolocation prompt fires.
+Picking a city skips the browser's location permission entirely and resolves to that city's centre
+point instead. The matching list of seeded cities lives in two places that have to stay in step:
+`apps/web/src/lib/cities.ts` on the frontend and `CITIES` in `scripts/seed_cities.py` for seeding,
+currently Pune, Mumbai, Delhi, Bengaluru, London, New York, San Francisco, Berlin, Toronto, Sydney,
+Singapore and Dubai. `scripts/seed_cities.py` runs `seed_places` sequentially across all of them
+(`--only` for a subset, `--dry-run` to count without writing, `--from-cache` to reuse a cached
+Overpass payload, `--delay` to stay under Overpass's fair-use rate), logging and continuing past
+any one city that fails rather than aborting the whole batch. `scripts/check_cities.py` then checks
+every seeded city the way the Scout actually sees it: it computes the real geohash-5 block around
+each city's centre and counts `places` documents in those cells, not just whether Overpass returned
+rows for the bounding box, flagging a city as thin under 50 places and failing outright on zero.
 
 Honest status: on 2026-10-10 that script fetched 10 Pune listings and kept **zero**. Google's
 events pack no longer carries a listing URL, a venue object, ticket info, or an unambiguous time
@@ -492,6 +509,27 @@ Practicalities that matter:
 - Images are downscaled to a 768 px maximum side before inference.
 - **Client-side verification can be spoofed.** This is a single-player game played against
   yourself, so that is an acceptable trade, and saying so out loud is part of the deal.
+
+---
+
+## The journal: photos and notes that never leave the device
+
+Once you have completed one quest, ever, the Reward screen offers to add it to a journal: a
+caption and any number of photos, kept at `/journal`. Until that first completion, the page shows
+as sealed rather than empty.
+
+It lives in **IndexedDB** (`apps/web/src/lib/journal.ts`), not `localStorage`, because photos do
+not fit in `localStorage`'s string-only quota. Each entry holds `id`, `createdAt`, the quest title,
+place name and category it was attached to, a `caption`, and zero or more photos, each stored as a
+blob with its width and height. Every photo is re-encoded through an off-screen canvas on save,
+capped at 1600 px on the long edge at JPEG quality 0.82, which has the side effect of stripping
+EXIF, including any GPS tag, before the image ever reaches storage.
+
+The unlock flag itself (`sqm.journal_unlocked`) is a small boolean in `localStorage`, OR'd with the
+server's completed-quest count, so the journal still unlocks correctly offline. Nothing in the
+journal is ever sent to the server: there is no endpoint for it, consistent with the project's one
+rule that the API has no image upload path at all. "Delete my data" in Settings, and clearing the
+site's storage, both erase it completely. There is no backup and no sync between devices.
 
 ---
 
@@ -755,8 +793,10 @@ demo audio, and hand-drawn WebP scene art.
 ```
 apps/web/           React + Vite + TS PWA  (13 routes, 15 test files)
   src/pages/        Home, Onboarding, Quest, Walk, Verify, Reward, Profile,
-                    Chronicle, Settings, Map, Export, NotFound
+                    Chronicle, Settings, Map, Export, Journal, NotFound
   src/verifier/     Gemma 3n: support detection, OPFS storage, prompt, parsing
+  src/lib/journal.ts  IndexedDB storage for the on-device photo-and-caption journal
+  src/lib/cities.ts   The seeded-city list behind "pick a city instead"
   src/state/        Quest lifecycle machine and provider, persisted locally
   src/story/        The scrollytelling landing page at / and /story
   src/lib/          API client, screen-time tracker, field log, voice, storage
@@ -775,7 +815,7 @@ services/llm/       llama.cpp Dockerfile + entrypoint (downloads and verifies th
 prompts/            THE source of truth for prompts, with SHA-256 hashes
 training/           Tinker data gen, filters, SFT, export, eval harness
 scripts/            seed_places, create_indexes, smoke_test, bench_llm, scan_secrets,
-                    summarize_field, pregen_demo_audio
+                    summarize_field, pregen_demo_audio, seed_cities, check_cities, fetch_events
 evals/              Generated results only. Never hand-edited.
 docs/               DECISIONS, DEPLOY, SECURITY, TRACES, MODEL_EXPORT, DEVRELAY, img/
 render.yaml         The Render Blueprint: three services, one file
@@ -830,6 +870,10 @@ python scripts/create_indexes.py
 python scripts/seed_places.py --bbox "<S,W,N,E>" --city "<name>" --dry-run   # check counts first
 python scripts/seed_places.py --city "<name>" --from-cache                   # embed and upsert
 ```
+
+To seed every city the "pick a city instead" picker offers in one go, use
+`python scripts/seed_cities.py` (`--only <city...>` for a subset, `--dry-run` to count without
+writing), then confirm the Scout can actually find them with `python scripts/check_cities.py`.
 
 Wait for the Atlas vector indexes to report READY, then:
 
