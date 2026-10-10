@@ -319,6 +319,12 @@ body {
   background: var(--color-gold);
   border-radius: 50%;
 }
+/* Event quests: a diamond, so shape — not colour alone — carries the distinction (§11.2). */
+.sqm-pin-event {
+  background: var(--color-berry, #8c3b4a);
+  border-radius: 4px;
+  transform: rotate(45deg);
+}
 
 /* Floating game HUD bar (top of the app on wide screens). */
 .hud-bar {

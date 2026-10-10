@@ -2,7 +2,50 @@ import { CATEGORY_ART } from './art'
 import { DmBubble } from './DmBubble'
 import { ArrowRightIcon, ClockIcon, PinIcon, StarIcon } from './Icons'
 import { CATEGORY_LABEL, formatDistance, METHOD_LABEL, RARITY_LABEL, SKILL_LABEL } from '../lib/labels'
-import type { Persona, Quest } from '../lib/types'
+import { formatClockTime } from '../lib/time'
+import type { Happening, Persona, Quest } from '../lib/types'
+
+/**
+ * "Happening now" while it runs, "Starts <time>" before it, and nothing once it has ended —
+ * a chip for a finished event would send the player out for something that is over.
+ */
+function timingLabel(h: Happening, now: Date): string | null {
+  const starts = new Date(h.starts_at)
+  const ends = new Date(h.ends_at)
+  if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime())) return null
+  if (now >= ends) return null
+  return now >= starts ? 'Happening now' : `Starts ${formatClockTime(starts)}`
+}
+
+/** The live event behind an event quest (MASTERSPEC P23 §7.1). */
+function HappeningNote({ happening }: { happening: Happening }) {
+  const timing = timingLabel(happening, new Date())
+  return (
+    <div className="mx-4 mt-4 rounded-xl border-2 border-moss/50 bg-moss-pale p-3 sm:mx-5" aria-labelledby="happening-title">
+      <p id="happening-title" className="hand-title text-2xl">
+        {happening.title}
+      </p>
+      <p className="text-ink-soft">{happening.when_text}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        {timing ? (
+          <span className="chip border-gold bg-parchment-light font-semibold">
+            <ClockIcon /> {timing}
+          </span>
+        ) : null}
+        {happening.url ? (
+          <a
+            className="btn btn-ghost min-h-11 px-3 py-1 text-base"
+            href={happening.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            See the listing <ArrowRightIcon />
+          </a>
+        ) : null}
+      </div>
+    </div>
+  )
+}
 
 interface Props {
   quest: Quest
@@ -51,6 +94,8 @@ export function QuestCard({ quest, persona, voice, busy = false, rerollsLeft, on
           <p className="mt-1 text-ink-soft">Proof: {METHOD_LABEL[quest.verification.method]}</p>
         </div>
       </div>
+
+      {quest.happening ? <HappeningNote happening={quest.happening} /> : null}
 
       <div className="px-4 sm:px-5">
         <DmBubble persona={persona} text={quest.briefing} listenable={voice} questId={quest.id} kind="briefing" />
