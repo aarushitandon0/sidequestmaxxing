@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
+from app.models.quest import Happening
 from app.services.db import Doc
 from app.services.geo import cells_around, haversine_m
 from app.services.indexes import EVENTS_VECTOR_INDEX
@@ -90,6 +91,13 @@ def to_event_candidate(doc: Doc, lat: float, lng: float) -> Candidate:
         lng=elng,
         score=doc.get("score"),
         event_window=(doc["starts_at"], doc["ends_at"]),
+        happening=Happening(
+            title=doc["name"],
+            when_text=doc.get("when_text", ""),
+            starts_at=doc["starts_at"],
+            ends_at=doc["ends_at"],
+            url=doc.get("url"),
+        ),
     )
 
 

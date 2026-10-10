@@ -84,6 +84,7 @@ Render (hosting), MongoDB Atlas (data), ElevenLabs (voice), Sentry (tracing), Ti
 | **ElevenLabs** | Spoken DM briefing so you can put the phone away | Demo clip, count of voice-first quests, char budget policy |
 | **MongoDB Atlas** | Atlas Vector Search over places + per-device quest memory | Index definitions, "avoid repeats" before/after example |
 | **Sentry** | Agent tracing across Scout → Quest Master → validators, latency/tokens | Trace screenshots + one real bug found/fixed using traces |
+| **SerpApi** (P23) | Live web search grounds quests in real happenings today: an offline fetch script reads Google's `events_results`, sanitizes and safety-filters them, and upserts them as a second vector-search source | `scripts/fetch_events.py`, the measured funnel in `evals/events_funnel.md`, a quest card showing a real event |
 | **DevRelay / session sharing** (optional) | Saved agent session embedded in post | Link/embed |
 
 > Priority if time runs short: **Render > Gemma > Tinker > ElevenLabs > MongoDB > Sentry**. (Render hosts everything; Gemma+Tinker are the "open" proof; the rest are cheap add-ons.) Confirm in the official prize rules whether one project may win several categories **[VERIFY]**.
@@ -97,6 +98,8 @@ Render (hosting), MongoDB Atlas (data), ElevenLabs (voice), Sentry (tracing), Ti
 | Overpass API slow | timeout | Use cached `places` in Atlas; ship a seed snapshot for the demo city |
 | Atlas unreachable | connect error | API returns 503 with friendly message; demo uses recorded video as insurance |
 | Open-Meteo down | error | Omit weather; context says `weather: unknown` |
+| SerpApi unavailable / quota hit / engine retired | HTTP error, or `events_results` absent | Offline script only, so no request path is affected. The `events` collection keeps whatever it already has (TTL-swept); when it is empty the Scout returns place candidates alone and `/v1/quests/generate` is unchanged |
+| Nominatim down | HTTP error or timeout | Tier-1 OSM place matches only; a venue we cannot resolve is dropped, never guessed. There is no tier 3 |
 
 ---
 
@@ -190,6 +193,13 @@ Indexes:
 ]}
 ```
 
+### 5.1b `events` (live happenings, P23)
+`{_id: "serp/<sha1-16>", name, kind (PlaceKind), venue_name, tags_summary, loc: GeoJSON Point, cell5, indoor, needs_daylight, starts_at, ends_at, when_text, url: string|null, place_id: string|null, geocode: "place_match"|"nominatim", text, embedding[384], source: "serpapi", fetched_at}`.
+`_id` is derived from `title|venue_name|start_date`, so a re-fetch updates rather than duplicates.
+**There is deliberately no `description` field** anywhere on the document: the longest piece of untrusted prose in a listing can never be surfaced by a later change.
+Indexes: `2dsphere` on `loc`; TTL on `ends_at` (`expireAfterSeconds: 0`) so an event disappears when it is over; **Atlas Vector Search index `events_vec`**: vector(384, cosine) + filters `cell5`, `kind`.
+Written only by `scripts/fetch_events.py` (offline). Read only by the Scout.
+
 ### 5.2 `quests`
 `{_id, device_id, created_at, request_digest (hash of non-location request fields), quest{…schema 6.2…}, source: "llm"|"fallback", model: "name@sha", status: "offered|accepted|completed|skipped|expired", accepted_at, skipped_at?, expires_at}`. Offered quests expire 6 h after creation.
 Index: `(device_id, created_at desc)`.
@@ -247,7 +257,8 @@ Base: `/v1`. JSON only (except TTS audio). Header `X-Device-Id: <uuid v4>` requi
   "rarity": "common|rare|legendary",  // server
   "xp": "int",                        // server
   "distance_m": "int|null",           // server (from place)
-  "place": {"id":"","name":"","lat":0,"lng":0} // server (hydrated)
+  "place": {"id":"","name":"","lat":0,"lng":0}, // server (hydrated)
+  "happening": {"title":"","when_text":"","starts_at":"","ends_at":"","url":"string|null"} // server (P23; null unless the place is a live event). NOT 🤖 - the LLM can never write it
 }
 ```
 Rules: `verification.method="photo"` ⇒ `photo_prompt` non-null and **never about people/faces**. `place_id=null` ⇒ method ∈ {`photo`,`honor`}.
@@ -298,6 +309,7 @@ Rules: `indoor_only=true` if thunderstorm, precip_prob ≥ 70% (worst hour in th
 ### 7.2 Scout (deterministic + vector search)
 Described in 3.1. Output ≤ 8 candidates: `{id,name,kind,distance_m,tags_summary,indoor,needs_daylight}`.
 If `< 1` candidate → LLM must still produce a place-less quest (`place_id=null`) or the fallback engine does.
+**Second source (P23):** a parallel `$vectorSearch` over `events` in the same geohash block, `$match`ed to events joinable in `[now, now + minutes_available]` (overlap, not containment: an event that began 20 minutes ago is still joinable, and the `$match` is not redundant with the TTL because Mongo sweeps on its own schedule). Event candidates run through the *same* `safety_filter` and memory filter as places - no exemptions for daylight, indoor-only weather or walkability - and are then merged **events first, capped at 3 of the 8 slots**, so a quiet day still yields place quests. Event details reach the model only through the existing freeform `tags_summary` field (`event=...; when=...; venue=...`), so `prompts/quest_master.system.txt` is never touched. Any failure returns zero events, never an error.
 Overpass fetch (seed script + lazy fill): kinds from `leisure=park|garden|nature_reserve`, `natural=peak|water|wood`, `tourism=viewpoint|artwork|attraction|museum`, `historic=*`, `amenity=marketplace|cafe|library`. Require `name`. Exclude `access=private|no`. Cache by `cell5`; **respect Overpass fair-use**; never fetch per user request more than once per cell per 24 h.
 
 ### 7.3 Quest Master (fine-tuned LLM)

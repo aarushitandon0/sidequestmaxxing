@@ -72,6 +72,7 @@ def hydrate(draft: QuestDraft, candidates: list[Candidate], quest_id: str) -> Qu
         place=PlaceRef(id=place.id, name=place.name, lat=place.lat, lng=place.lng)
         if place
         else None,
+        happening=place.happening if place else None,
     )
 
 

@@ -4,6 +4,7 @@
 keys, so an LLM that tries to set xp/rarity/id fails V1. `Quest` adds server-owned fields.
 """
 
+from datetime import datetime
 from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -46,6 +47,16 @@ class QuestDraft(BaseModel):
         return self
 
 
+class Happening(BaseModel):
+    """A live event behind an event quest. Server-owned: the LLM never writes this (P23)."""
+
+    title: str
+    when_text: str
+    starts_at: datetime
+    ends_at: datetime
+    url: str | None = None
+
+
 class PlaceRef(BaseModel):
     id: str
     name: str
@@ -61,6 +72,7 @@ class Quest(QuestDraft):
     xp: int = Field(ge=0)
     distance_m: int | None = None
     place: PlaceRef | None = None
+    happening: Happening | None = None
 
 
 def llm_json_schema() -> dict[str, Any]:

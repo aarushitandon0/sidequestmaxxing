@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.models.enums import PlaceKind
+from app.models.quest import Happening
 from app.services.geo import cells_around, haversine_m
 from app.services.indexes import PLACES_VECTOR_INDEX
 
@@ -29,6 +30,8 @@ class Candidate(BaseModel):
     score: float | None = None
     event_window: tuple[datetime, datetime] | None = None
     """`(starts_at, ends_at)` in UTC for a live event; `None` for an ordinary place (P23)."""
+    happening: Happening | None = None
+    """The event this candidate is, for `hydrate` to copy onto the response; `None` for places."""
 
 
 def build_places_pipeline(
