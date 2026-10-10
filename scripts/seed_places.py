@@ -14,6 +14,7 @@ import json
 import logging
 import re
 import sys
+import time
 from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
@@ -37,12 +38,36 @@ def slug(city: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", city.lower()).strip("-") or "city"
 
 
-def fetch_overpass(url: str, query: str) -> dict[str, Any]:
-    with httpx.Client(timeout=httpx.Timeout(180.0, connect=15.0)) as client:
-        res = client.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT})
-        res.raise_for_status()
-        payload: dict[str, Any] = res.json()
-    return payload
+def fetch_overpass(
+    url: str, query: str, *, retries: int = 3, backoff_s: float = 20.0
+) -> dict[str, Any]:
+    """One Overpass query, with polite backoff.
+
+    The public instance answers a heavy bbox with 429 (slot exhausted) or 504 (the query ran
+    out of server time), and both are routine rather than exceptional: a city-sized box can
+    return five figures of elements. `Retry-After` is honoured when sent, otherwise the wait
+    doubles. Raising only after the last attempt keeps a single slow city from costing a run.
+    """
+    wait = backoff_s
+    for attempt in range(1, retries + 1):
+        with httpx.Client(timeout=httpx.Timeout(300.0, connect=15.0)) as client:
+            res = client.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT})
+        if res.status_code not in (429, 504) or attempt == retries:
+            res.raise_for_status()
+            payload: dict[str, Any] = res.json()
+            return payload
+        retry_after = res.headers.get("Retry-After")
+        pause = float(retry_after) if (retry_after or "").strip().isdigit() else wait
+        log.warning(
+            "Overpass said %d (attempt %d/%d); waiting %.0fs",
+            res.status_code,
+            attempt,
+            retries,
+            pause,
+        )
+        time.sleep(pause)
+        wait *= 2
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def main(argv: list[str] | None = None) -> int:

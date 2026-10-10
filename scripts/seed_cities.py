@@ -49,7 +49,7 @@ CITIES: dict[str, str] = {
     "dubai": "25.17,55.20,25.30,55.35",
 }
 
-DEFAULT_DELAY_S = 5.0
+DEFAULT_DELAY_S = 15.0  # 5s earned a 429 from the public instance
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -74,7 +74,9 @@ def main(argv: list[str] | None = None) -> int:
     for i, city in enumerate(chosen):
         log.info("")
         log.info("--- %s (%d/%d) ---", city, i + 1, len(chosen))
-        call = ["--city", city, "--bbox", CITIES[city]]
+        # `--bbox=-33.92,...` and not `--bbox -33.92,...`: argparse reads a leading
+        # minus as the next flag, which is how Sydney broke the first run.
+        call = ["--city", city, f"--bbox={CITIES[city]}"]
         if args.dry_run:
             call.append("--dry-run")
         if args.from_cache:
@@ -83,6 +85,10 @@ def main(argv: list[str] | None = None) -> int:
             call += ["--overpass-url", args.overpass_url]
         try:
             code = seed_places.main(call)
+        except SystemExit as exc:  # argparse bails this way; it is not an Exception
+            log.error("%s rejected its arguments (exit %s)", city, exc.code)
+            failed.append(city)
+            continue
         except Exception as exc:  # one bad city must not lose the other eleven
             log.error("%s failed: %s: %s", city, type(exc).__name__, exc)
             failed.append(city)
