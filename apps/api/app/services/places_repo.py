@@ -1,5 +1,6 @@
 """Place search: Atlas $vectorSearch pre-filtered by geohash cells, then haversine post-filter."""
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel
@@ -26,6 +27,8 @@ class Candidate(BaseModel):
     lat: float
     lng: float
     score: float | None = None
+    event_window: tuple[datetime, datetime] | None = None
+    """`(starts_at, ends_at)` in UTC for a live event; `None` for an ordinary place (P23)."""
 
 
 def build_places_pipeline(

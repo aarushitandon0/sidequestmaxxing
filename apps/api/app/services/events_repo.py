@@ -89,6 +89,7 @@ def to_event_candidate(doc: Doc, lat: float, lng: float) -> Candidate:
         lat=elat,
         lng=elng,
         score=doc.get("score"),
+        event_window=(doc["starts_at"], doc["ends_at"]),
     )
 
 

@@ -1,13 +1,15 @@
-"""Table-driven tests for V1-V12 (MASTERSPEC §7.4) and the §9.2 banned-term lint."""
+"""Table-driven tests for V1-V13 (MASTERSPEC §7.4) and the §9.2 banned-term lint."""
 
 import json
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
 
 from app.models.quest import QuestDraft
+from app.services.places_repo import Candidate
 from app.validators import ValidationContext, banned_hits, contact_hits, people_hits, validate_quest
-from app.validators.core import quest_memory_text
+from app.validators.core import quest_memory_text, v13_event_window
 from tests.quest_factory import BASE_QUEST, CANDIDATES, quest
 
 CTX = ValidationContext(minutes_available=60, indoor_only=False, daylight_minutes_left=240)
@@ -522,3 +524,101 @@ def test_collects_multiple_failures() -> None:
 def test_quest_memory_text() -> None:
     q = QuestDraft.model_validate(BASE_QUEST)
     assert quest_memory_text(q, "Banyan Park").endswith("naturalist — Banyan Park")
+
+
+# --- V13: event time window (P23) ------------------------------------------------------------
+
+EVENT_NOW = datetime(2026, 10, 11, 2, 0, tzinfo=UTC)
+
+
+def _event_ctx() -> ValidationContext:
+    return ValidationContext(minutes_available=60, daylight_minutes_left=300, now=EVENT_NOW)
+
+
+def event_candidate(*, starts: datetime, ends: datetime, cid: str = "serp/walk") -> Candidate:
+    return Candidate(
+        id=cid,
+        name="Heritage Walk",
+        kind="heritage",
+        distance_m=600,
+        lat=18.52,
+        lng=73.85,
+        indoor=False,
+        needs_daylight=True,
+        event_window=(starts, ends),
+    )
+
+
+def _v13(q: dict[str, Any], candidates: list[Candidate]) -> list[str]:
+    draft = QuestDraft.model_validate(q)
+    return [f.id for f in v13_event_window(draft, _event_ctx(), candidates, EVENT_NOW)]
+
+
+def test_v13_accepts_event_already_running() -> None:
+    """A walk that began 30 minutes ago and runs another 90 is joinable, not expired."""
+    cand = event_candidate(
+        starts=EVENT_NOW - timedelta(minutes=30), ends=EVENT_NOW + timedelta(minutes=90)
+    )
+    assert _v13(quest(place_id=cand.id, est_minutes=45), [cand]) == []
+
+
+def test_v13_rejects_event_that_already_ended() -> None:
+    cand = event_candidate(
+        starts=EVENT_NOW - timedelta(hours=3), ends=EVENT_NOW - timedelta(hours=1)
+    )
+    assert _v13(quest(place_id=cand.id), [cand]) == ["V13"]
+
+
+def test_v13_rejects_event_starting_after_the_window() -> None:
+    cand = event_candidate(
+        starts=EVENT_NOW + timedelta(hours=5), ends=EVENT_NOW + timedelta(hours=7)
+    )
+    assert _v13(quest(place_id=cand.id, est_minutes=30), [cand]) == ["V13"]
+
+
+def test_v13_accepts_event_starting_just_inside_the_window() -> None:
+    cand = event_candidate(
+        starts=EVENT_NOW + timedelta(minutes=40), ends=EVENT_NOW + timedelta(hours=2)
+    )
+    assert _v13(quest(place_id=cand.id, est_minutes=45), [cand]) == []
+
+
+def test_v13_boundary_start_exactly_at_now_plus_est_minutes_passes() -> None:
+    cand = event_candidate(
+        starts=EVENT_NOW + timedelta(minutes=45), ends=EVENT_NOW + timedelta(hours=2)
+    )
+    assert _v13(quest(place_id=cand.id, est_minutes=45), [cand]) == []
+
+
+def test_v13_boundary_end_exactly_at_now_passes() -> None:
+    cand = event_candidate(starts=EVENT_NOW - timedelta(hours=2), ends=EVENT_NOW)
+    assert _v13(quest(place_id=cand.id, est_minutes=45), [cand]) == []
+
+
+def test_v13_ignores_place_candidates() -> None:
+    assert _v13(quest(place_id="way/2"), list(CANDIDATES)) == []
+
+
+def test_v13_ignores_placeless_quests() -> None:
+    assert _v13(quest(place_id=None), []) == []
+
+
+def test_v13_ignores_a_place_id_that_matches_no_candidate() -> None:
+    assert _v13(quest(place_id="serp/missing"), []) == []
+
+
+def test_validate_quest_without_now_skips_v13() -> None:
+    """Every pre-P23 caller passes no `now`, so V13 must be a no-op for them."""
+    ctx = ValidationContext(minutes_available=60, daylight_minutes_left=300)
+    cand = event_candidate(
+        starts=EVENT_NOW - timedelta(hours=3), ends=EVENT_NOW - timedelta(hours=1)
+    )
+    assert "V13" not in validate_quest(quest(place_id=cand.id), ctx, [cand]).failure_ids
+
+
+def test_validate_quest_with_now_runs_v13() -> None:
+    cand = event_candidate(
+        starts=EVENT_NOW - timedelta(hours=3), ends=EVENT_NOW - timedelta(hours=1)
+    )
+    result = validate_quest(quest(place_id=cand.id), _event_ctx(), [cand])
+    assert "V13" in result.failure_ids

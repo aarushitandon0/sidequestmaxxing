@@ -1,4 +1,4 @@
-"""Quest validators V1-V12 (MASTERSPEC §7.4). Pure functions.
+"""Quest validators V1-V13 (MASTERSPEC §7.4). Pure functions.
 
 Used three ways: on every LLM output in production, as the training-data filter, and as the
 eval metric. `validate_quest` never raises; it returns every failure it can find.
@@ -8,6 +8,7 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Any, get_args
 
 from pydantic import ValidationError
@@ -49,6 +50,7 @@ class ValidationContext:
     minutes_available: int
     indoor_only: bool = False
     daylight_minutes_left: int | None = None  # None = unknown → treated as no daylight
+    now: datetime | None = None  # None = caller has no clock → V13 is skipped (P23)
 
 
 @dataclass
@@ -212,6 +214,30 @@ def v12_not_duplicate(
     return []
 
 
+def v13_event_window(
+    q: QuestDraft,
+    ctx: ValidationContext,
+    candidates: Sequence[Candidate],
+    now: datetime,
+) -> list[Failure]:
+    """V13: the chosen event must still be joinable (P23 spec section 6.1).
+
+    Pass when `starts_at <= now + est_minutes` and `ends_at >= now`. The second half is an
+    overlap test, not a containment one: an event that began 20 minutes ago and is still
+    running is exactly the thing we want to send a player to.
+
+    A no-op for ordinary places, which carry no `event_window`.
+    """
+    place = _place(q, candidates) if q.place_id else None
+    if place is None or place.event_window is None:
+        return []
+    starts_at, ends_at = place.event_window
+    arrival = now + timedelta(minutes=q.est_minutes)
+    if starts_at <= arrival and ends_at >= now:
+        return []
+    return [Failure("V13", "event is over or starts after the player's window")]
+
+
 def validate_quest(
     quest: str | dict[str, Any] | QuestDraft,
     ctx: ValidationContext,
@@ -219,7 +245,7 @@ def validate_quest(
     recent_embeddings: Sequence[Sequence[float]] = (),
     quest_embedding: Sequence[float] | None = None,
 ) -> ValidationResult:
-    """Run V1-V12. V12 only runs when the caller supplies `quest_embedding`."""
+    """Run V1-V13. V12 needs `quest_embedding`; V13 needs `ctx.now` (P23)."""
     parsed, failures = v1_parse(quest)
     if parsed is None:
         return ValidationResult(None, failures)
@@ -234,6 +260,8 @@ def validate_quest(
     failures += v10_daylight(parsed, ctx, candidates)
     failures += v11_category(parsed)
     failures += v12_not_duplicate(quest_embedding, recent_embeddings)
+    if ctx.now is not None:
+        failures += v13_event_window(parsed, ctx, candidates, ctx.now)
     return ValidationResult(parsed, failures)
 
 

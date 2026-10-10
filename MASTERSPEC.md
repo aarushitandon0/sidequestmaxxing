@@ -336,6 +336,7 @@ Timeout 25 s. One retry with failure reasons appended as an extra user message.
 | V10 | If place `needs_daylight` and daylight insufficient → reject |
 | V11 | Category ∈ enum |
 | V12 | Not near-duplicate of a quest in last 14 days (embedding cosine < 0.9) |
+| V13 | If the place is a live event, it is still joinable: `starts_at ≤ now + est_minutes` and `ends_at ≥ now`. No-op for ordinary places and when the caller supplies no clock (P23) |
 
 ### 7.5 Fallback engine (P0, deterministic)
 Templates per `kind` × `category` with persona-flavoured phrasing; always passes V1–V11. Used when LLM fails, times out, or fails validation twice. Marked `source:"fallback"` and shown to nobody as an error.

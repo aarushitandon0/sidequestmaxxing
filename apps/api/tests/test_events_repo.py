@@ -215,3 +215,21 @@ def test_merge_does_not_mutate_its_inputs() -> None:
     merge_candidates(events, places)
     assert len(events) == 1
     assert len(places) == 1
+
+
+def test_to_event_candidate_carries_the_event_window_for_v13() -> None:
+    doc = event_doc("serp/abc", "Heritage Walk", starts_at=NOW, ends_at=UNTIL)
+    c = to_event_candidate(doc, LAT, LNG)
+    assert c.event_window == (NOW, UNTIL)
+
+
+def test_to_place_candidate_has_no_event_window() -> None:
+    from app.services.places_repo import to_candidate
+
+    doc = {
+        "_id": "way/2",
+        "name": "Banyan Park",
+        "kind": "park",
+        "loc": {"type": "Point", "coordinates": [LNG, LAT]},
+    }
+    assert to_candidate(doc, LAT, LNG).event_window is None
