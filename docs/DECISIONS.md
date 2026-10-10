@@ -402,3 +402,54 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   an event title really did inject an element through the tooltip (test watched failing). And
   `_fragment` now strips `;` and `=` as well as `:` and `,`, so a listing's `when_text` cannot
   forge a tag field (`when=…; kind=temple`) in the summary the model reads.
+- **D-77 — the live pack's entry shape is flat, and the parser now reads it.** The migration off
+  the deprecated `google_events` engine (D-70) changed the engine in `fetch_serpapi` but left
+  `parse_events` reading the old nested entry, so every real payload lost its date, venue and
+  link: `fetched 10, parsed 10, no_time 10, kept 0`. `events_results` on `engine=google` returns
+  `{title, type, date: "11 Oct", time: "5:00", address: [...], thumbnail}` — strings, with **no
+  `venue`, `link`, `description` or `ticket_info`**. `parse_events` now accepts either shape
+  (pre-migration caches still parse), takes the venue from `address[0]`, and normalizes the bare
+  `time`. This resolves the parsing half of OQ-E1; the safety half stands — with no
+  `ticket_info` or `description`, `banned 0`/`ticketed 0` still are not evidence the filters bite
+  on live data.
+- **D-78 — `gl=in` prints the day first, so both date readings are tried and the leftmost wins.**
+  `_DATE_RE` only matched `<Month> <D>`, so `"11 Oct"` never parsed; and on `"11 Oct 5:00 PM"` the
+  month-first pattern happily matched `Oct 5` out of the clock time, yielding 5 October. A day
+  followed by `:` is now rejected as a time, both readings are tried, and the leftmost real match
+  wins — so `"Oct 11"` stays October 11.
+- **D-79 — a bare time with no meridiem is read as PM, at the ingest boundary.** The live pack
+  prints venue-local time with no AM/PM (`"5:00"`, `"7:30"`), and `event_time` refuses what it
+  cannot read, so the assumption is made once in `serp_events._with_meridiem` rather than hidden
+  in the parser. Hours 1-12 become PM because these listings are overwhelmingly evening shows. A
+  morning event mislabelled this way fails the daylight filter and is dropped, which is the safe
+  direction — it loses an event, never places one at the wrong hour.
+- **D-80 — the geocode query is deduplicated per comma-token and carries the city.** With the
+  venue taken from `address[0]`, the old join repeated it and omitted the city:
+  `"Pashan Lake, Pashan Lake, Pashan"` misses a lake that `"Pashan Lake, Pashan, Pune"` resolves
+  (verified against the live Nominatim API). Deduplication is per token, not per part, because
+  Google also writes the city into the venue line (`"The Box Hub, Pune"`), where a whole-part
+  check would miss it. Extracted as `geocode_query` so it is testable.
+- **D-81 — the fallback engine must prefer a live happening over a nearer place.** It re-sorted
+  candidates on `distance_m` alone, discarding the event-first order `merge_candidates` exists to
+  create, so while the LLM was down a happening could never be chosen — P23 silently vanished
+  exactly when the fallback mattered, even though `/v1/quests/generate` still succeeded
+  (invariant 5). The sort key is now `(c.happening is None, c.distance_m)`; per-candidate
+  usability is unchanged, so an event too far or too late loses to a place rather than blocking
+  one.
+- **D-82 — Atlas Search index quota is per cluster, and it silently disabled the whole feature.**
+  `create_indexes.py` could not create `events_vec`: an M0 cluster allows **3** FTS indexes
+  *across all databases*, and the third was `sample_mflix.movies.default` from the Atlas sample
+  dataset. The script logged `could not create events_vec via driver (20)` and fell back to
+  printing the JSON for the Atlas UI, which is easy to scroll past. Without the index
+  `search_events` raises `OperationFailure`, `events_repo` catches it by design and returns `[]`,
+  so the live section rendered nothing no matter what the collection held. Freed by dropping the
+  sample dataset's search index (its 21,349 documents kept). **Any deploy needs a free FTS slot
+  before P23 works at all**; a missing `events_vec` is invisible in the API response.
+- **D-83 — the live Pune feed contains almost no eligible event, and that is the funnel working.**
+  All 10 listings in the 2026-10-10 pull are indoor evening commercial entertainment (theatres at
+  5-10 PM, gigs, a candlelight concert) at venues absent from `places`, whose taxonomy is
+  deliberately outdoor-and-civic (`park, garden, heritage, water, viewpoint, cafe, library,
+  museum, market, artwork, peak`) and has **no theatre or music-venue kind**. So `no_coords` and
+  `night` are the safety invariants refusing nightlife, not bugs. `scripts/seed_dev_events.py`
+  fabricates the missing daytime-outdoor case for local development; its documents carry
+  `source="dev-seed"` and `dev/` ids and must never back a claim or a metric.

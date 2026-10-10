@@ -64,24 +64,19 @@ def geocode_query(*, venue_name: str, title: str, address: list[str], city: str)
     finds. The city is appended for the same reason: without it Nominatim misses venues that
     resolve cleanly with it.
     """
-    parts: list[str] = []
+    # Deduplication is per comma-separated token, not per part, because the repetition shows
+    # up at both levels: the venue repeats `address[0]` wholesale, and Google also writes the
+    # city into the venue line ("The Box Hub, Pune") where a whole-part check would miss it.
+    tokens: list[str] = []
     seen: set[str] = set()
-    for part in (venue_name or title, *address):
-        part = _WS_RE.sub(" ", part).strip()
-        if not part or part.casefold() in seen:
-            continue
-        seen.add(part.casefold())
-        parts.append(part)
-    # The city is compared token by token, not whole: an address line of "Pune, Maharashtra"
-    # already carries most of a city of "Pune, Maharashtra, India", and repeating it reads as
-    # a different, worse query.
-    joined = ", ".join(parts).casefold()
-    for token in city.split(","):
-        token = _WS_RE.sub(" ", token).strip()
-        if token and token.casefold() not in joined:
-            parts.append(token)
-            joined = ", ".join(parts).casefold()
-    return ", ".join(parts)
+    for part in (venue_name or title, *address, city):
+        for token in part.split(","):
+            token = _WS_RE.sub(" ", token).strip()
+            if not token or token.casefold() in seen:
+                continue
+            seen.add(token.casefold())
+            tokens.append(token)
+    return ", ".join(tokens)
 
 
 def _resolved_from_place(doc: Doc) -> Resolved:

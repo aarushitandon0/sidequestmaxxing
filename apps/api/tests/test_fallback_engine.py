@@ -7,6 +7,7 @@ import pytest
 
 from app.agents.fallback_engine import FallbackInput, generate_fallback_quest
 from app.models.enums import CATEGORIES, MOODS, PERSONAS, PLACE_KINDS
+from app.models.quest import Happening
 from app.services.places_repo import Candidate
 from app.validators import validate_quest
 from tests.quest_factory import LIT_PARK, MUSEUM, PARK
@@ -155,3 +156,85 @@ def test_fallback_never_issues_an_event_that_starts_after_the_players_window() -
         FallbackInput(minutes_available=60, candidates=[too_late], now=now, seed=7)
     )
     assert quest.place_id != "serp/late"
+
+
+# --- P23: a live happening must survive the LLM being down -----------------------------------
+
+
+def _event_candidate(distance_m: int) -> Candidate:
+    """An event candidate, shaped exactly as `to_event_candidate` builds one."""
+    starts = datetime(2026, 10, 10, 17, 18, tzinfo=UTC)
+    ends = starts + timedelta(hours=3)
+    return Candidate(
+        id="dev/now-indoor",
+        name="Museum Late Opening Tour",
+        kind="museum",
+        distance_m=distance_m,
+        tags_summary="event=museum late opening; venue=Parvati Museum",
+        indoor=True,
+        needs_daylight=False,
+        lat=18.5,
+        lng=73.8,
+        event_window=(starts, ends),
+        happening=Happening(
+            title="Museum Late Opening Tour",
+            when_text="on now",
+            starts_at=starts,
+            ends_at=ends,
+            url=None,
+        ),
+    )
+
+
+def _nearer_plain_museum(distance_m: int) -> Candidate:
+    return Candidate(
+        id="way/plain",
+        name="City Museum",
+        kind="museum",
+        distance_m=distance_m,
+        indoor=True,
+        needs_daylight=False,
+        lat=18.5,
+        lng=73.8,
+    )
+
+
+def _fallback_input(candidates: list[Candidate], **over: object) -> FallbackInput:
+    base: dict[str, object] = {
+        "minutes_available": 180,
+        "persona": "chill",
+        "mood": "curious",
+        "candidates": candidates,
+        "recent_categories": [],
+        "indoor_only": True,
+        "daylight_minutes_left": 0,
+        "seed": 7,
+    }
+    base.update(over)
+    return FallbackInput(**base)  # type: ignore[arg-type]
+
+
+def test_an_event_is_chosen_over_a_nearer_plain_place() -> None:
+    """`merge_candidates` puts events first on purpose; the fallback must not re-sort that away.
+
+    Without this the P23 feature silently disappears whenever the LLM is down, even though
+    `/v1/quests/generate` still succeeds (invariant 5).
+    """
+    event = _event_candidate(2706)
+    nearer = _nearer_plain_museum(1039)
+    quest = generate_fallback_quest(_fallback_input([nearer, event]))
+    assert quest.place_id == event.id
+
+
+def test_a_place_is_still_chosen_when_there_is_no_event() -> None:
+    nearer = _nearer_plain_museum(1039)
+    quest = generate_fallback_quest(_fallback_input([nearer]))
+    assert quest.place_id == nearer.id
+
+
+def test_an_unusable_event_does_not_block_a_place_quest() -> None:
+    """An event too far to reach must not starve the fallback into a place-less quest."""
+    event = _event_candidate(5900)
+    nearer = _nearer_plain_museum(400)
+    quest = generate_fallback_quest(_fallback_input([nearer, event], minutes_available=60))
+    assert quest.place_id == nearer.id

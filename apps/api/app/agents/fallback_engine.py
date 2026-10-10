@@ -226,7 +226,12 @@ def _passes(q: QuestDraft, inp: FallbackInput, candidates: Sequence[Candidate]) 
 def generate_fallback_quest(inp: FallbackInput) -> QuestDraft:
     rng = random.Random(inp.seed)
     order = _category_order(inp, rng)
-    candidates = sorted(inp.candidates, key=lambda c: c.distance_m)
+    # Events first, then nearest. `merge_candidates` already ordered events ahead of places
+    # on purpose, and sorting on distance alone threw that away, so a live happening could
+    # never be chosen while the LLM was down - the feature vanished exactly when the
+    # fallback mattered. Usability is still checked per candidate below, so an event that is
+    # too far or too late simply loses to a place rather than blocking one.
+    candidates = sorted(inp.candidates, key=lambda c: (c.happening is None, c.distance_m))
 
     # 1) Place-based quests, freshest category first, nearest place first.
     for category in order:

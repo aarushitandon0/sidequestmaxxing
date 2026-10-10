@@ -210,3 +210,15 @@ def test_query_dedupes_case_insensitively() -> None:
         venue_name="pashan lake", title="Walk", address=["Pashan Lake", "Pashan"], city="Pune"
     )
     assert q.lower().count("pashan lake") == 1
+
+
+def test_query_does_not_repeat_a_city_already_inside_the_venue_name() -> None:
+    """Google writes the city into the venue line ("The Box Hub, Pune")."""
+    q = geocode_query(
+        venue_name="The Box Hub, Pune",
+        title="Sakharam ka Ghar",
+        address=["The Box Hub, Pune", "Pune"],
+        city="Pune, Maharashtra, India",
+    )
+    assert q == "The Box Hub, Pune, Maharashtra, India"
+    assert q.lower().count("pune") == 1
