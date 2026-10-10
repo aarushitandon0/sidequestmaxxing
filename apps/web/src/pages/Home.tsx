@@ -203,7 +203,7 @@ export function Home() {
                     {start.status === 'consent' ? (
                       <LocationConsent
                         onDevice={() => void start.withChoice('device')}
-                        onDemo={() => void start.withChoice('demo')}
+                        onCity={(slug) => void start.withChoice(`city:${slug}`)}
                         onCancel={start.cancel}
                       />
                     ) : busy ? (
@@ -223,8 +223,8 @@ export function Home() {
                               Try again
                             </button>
                           ) : null}
-                          <button type="button" className="btn btn-ghost" onClick={() => void start.withChoice('demo')}>
-                            Use the demo area
+                          <button type="button" className="btn btn-ghost" onClick={start.pickAgain}>
+                            Pick a city instead
                           </button>
                         </div>
                       </div>

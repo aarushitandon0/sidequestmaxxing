@@ -45,7 +45,7 @@ describe('Quest board', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/onboarding')
   })
 
-  it('asks for location just in time; the demo area works without permission', async () => {
+  it('asks for location just in time; picking a city works without permission', async () => {
     savePrefs({ onboarded: true, interests: ['birds'] })
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
       String(url).includes('/generate') ? jsonResponse(QUEST) : jsonResponse(PROFILE),
@@ -53,14 +53,48 @@ describe('Quest board', () => {
     renderAt('/home', <Home />)
     fireEvent.click(screen.getByRole('button', { name: /get a quest/i }))
     expect(screen.getByText(/approximate area/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /pick a city instead/i }))
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /play in the demo area/i }))
+      fireEvent.click(screen.getByRole('button', { name: 'Pune' }))
     })
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/quest'))
     const call = fetchSpy.mock.calls.find((c) => String(c[0]).includes('/generate'))!
     const body = JSON.parse((call[1] as RequestInit).body as string)
-    expect(body).toMatchObject({ lat: 18.52, lng: 73.856, mood: 'curious', interests: ['birds'], mode: 'walk' })
+    expect(body).toMatchObject({ lat: 18.525, lng: 73.85, mood: 'curious', interests: ['birds'], mode: 'walk' })
     expect(body.local_time_iso).toMatch(/[+-]\d\d:\d\d$/)
+  })
+
+  it('sends the chosen city, not the demo city', async () => {
+    // The picker is only worth having if it actually moves the player (P24).
+    savePrefs({ onboarded: true })
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
+      String(url).includes('/generate') ? jsonResponse(QUEST) : jsonResponse(PROFILE),
+    )
+    renderAt('/home', <Home />)
+    fireEvent.click(screen.getByRole('button', { name: /get a quest/i }))
+    fireEvent.click(screen.getByRole('button', { name: /pick a city instead/i }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'London' }))
+    })
+    const call = fetchSpy.mock.calls.find((c) => String(c[0]).includes('/generate'))!
+    const body = JSON.parse((call[1] as RequestInit).body as string)
+    expect(body).toMatchObject({ lat: 51.51, lng: -0.115 })
+  })
+
+  it('still honours a device that stored the old demo choice', async () => {
+    // Shipped before the picker existed; an update must not re-prompt these players.
+    savePrefs({ onboarded: true })
+    localStorage.setItem('sqm.location_choice', JSON.stringify('demo'))
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
+      String(url).includes('/generate') ? jsonResponse(QUEST) : jsonResponse(PROFILE),
+    )
+    renderAt('/home', <Home />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /get a quest/i }))
+    })
+    const call = fetchSpy.mock.calls.find((c) => String(c[0]).includes('/generate'))!
+    const body = JSON.parse((call[1] as RequestInit).body as string)
+    expect(body).toMatchObject({ lat: 18.52, lng: 73.856 })
   })
 
   it('shows a friendly rate-limit message', async () => {

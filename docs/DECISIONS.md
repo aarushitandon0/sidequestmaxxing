@@ -512,3 +512,16 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
 - **D-92 — quest context reaches the Journal through router state, not the URL.** The reward
   screen's "add this to your journal" passes `{questTitle, placeName, category}` as React Router
   state. A query string would write a real place name into browser history for no benefit.
+- **D-93 — "play in the demo area" becomes "pick a city", because the demo area was the only
+  answer the app had.** A player whose GPS puts them outside every seeded bbox, or who declines
+  the permission, was offered Pune or nothing. The consent sheet and the post-failure error now
+  both open a picker over `SEEDED_CITIES`, so anyone anywhere can play somewhere with real named
+  parks, markets and libraries. The stored choice gains a `city:<slug>` form; the old `demo`
+  value is still honoured so an existing device is not re-prompted after an update, and an
+  unknown slug falls back to Pune rather than failing. No geocoding and no free text: the player
+  taps a name from a fixed list, which keeps §9.3 intact.
+- **D-94 — `SEEDED_CITIES` in the web app must stay in step with `scripts/seed_cities.py`.**
+  The web needs city centres to offer the picker, and there is no endpoint that serves them
+  (adding one is an API contract change). So the list is duplicated, with each centre being the
+  middle of that city's bbox. The failure mode is specific and worth stating: a city listed here
+  but never seeded promises a player real places and hands them place-less quests.
