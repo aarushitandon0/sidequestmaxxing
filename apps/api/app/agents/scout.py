@@ -24,6 +24,7 @@ from app.models.requests import QuestRequest
 from app.observability import span
 from app.services.db import Doc
 from app.services.embeddings import Embedder
+from app.services.events_repo import merge_candidates, search_events
 from app.services.memories_repo import Memory, recent_similar_memories
 from app.services.places_repo import MAX_CANDIDATES, Candidate, search_places
 from app.validators.core import daylight_ok
@@ -108,6 +109,41 @@ async def memory_check(
         return memories
 
 
+async def event_search(
+    db: AsyncDatabase[Doc],
+    query_vector: list[float],
+    req: QuestRequest,
+    ctx: QuestContext,
+    now: datetime,
+    seen_places: set[str],
+    dropped: Counter[str],
+) -> list[Candidate]:
+    """Live-event candidates, through the same safety and memory filters as places.
+
+    Events get no exemptions: indoor-only weather, daylight and walkability all apply. A
+    failure here costs the events, never the quest (MASTERSPEC section 2.4).
+    """
+    with span("scout.events") as s:
+        found = await search_events(
+            db,
+            query_vector,
+            req.lat,
+            req.lng,
+            req.radius_m,
+            now=now,
+            minutes_available=req.minutes_available,
+        )
+        safe, event_dropped = safety_filter(found, ctx, req.minutes_available)
+        fresh = [c for c in safe if c.id not in seen_places]
+        for reason, count in event_dropped.items():
+            dropped[f"event_{reason}"] += count
+        dropped["event_recently_visited"] += len(safe) - len(fresh)
+        # Counts only: no names, no coordinates (D-62).
+        s.set_data("found", len(found))
+        s.set_data("kept", len(fresh))
+        return fresh
+
+
 async def scout(
     req: QuestRequest,
     ctx: QuestContext,
@@ -137,7 +173,8 @@ async def scout(
         fresh = [c for c in safe if c.id not in seen_places]
         dropped["recently_visited"] += len(safe) - len(fresh)
 
-        result.candidates = diversify(fresh)
+        fresh_events = await event_search(db, query_vector, req, ctx, now, seen_places, dropped)
+        result.candidates = diversify(merge_candidates(fresh_events, fresh))
         result.recent_place_ids = sorted(seen_places)
         result.recent_categories = list(dict.fromkeys(m.category for m in memories if m.category))
         result.recent_embeddings = [m.embedding for m in memories if m.embedding]
