@@ -15,9 +15,11 @@ test('onboarding → generate → accept → walk → back → verify on device 
   await page.getByRole('button', { name: /i'll tell someone/i }).click()
   await expect(page).toHaveURL(/\/home$/)
 
-  // Generate (demo area: no location permission needed).
+  // Generate. Picking a city is the branch that needs no geolocation permission, so the
+  // run stays deterministic in CI (the chooser's other branch hits the browser prompt).
   await page.getByRole('button', { name: /get a quest/i }).click()
-  await page.getByRole('button', { name: /play in the demo area/i }).click()
+  await page.getByRole('button', { name: /pick a city instead/i }).click()
+  await page.getByRole('button', { name: 'Pune', exact: true }).click()
   await expect(page.getByRole('heading', { name: QUEST.title })).toBeVisible()
   await expect(page.getByText(QUEST.safety_note)).toBeVisible()
 

@@ -71,7 +71,9 @@ async def main() -> int:
     total = sum(len(c["text"]) for c in clips)
     for c in clips:
         print(f"  {c['slug']}: {len(c['text'])} chars")
-    print(f"{len(clips)} clips, {total} characters (≈{total / 2:.0f} credits on eleven_flash_v2_5)")
+    # Plain ASCII: this script is run from a Windows console too, whose default cp1252
+    # codec raises UnicodeEncodeError on "≈" and kills the dry run before it prints a total.
+    print(f"{len(clips)} clips, {total} characters (~{total / 2:.0f} credits on eleven_flash_v2_5)")
     if args.dry_run:
         return 0
     if not args.yes:

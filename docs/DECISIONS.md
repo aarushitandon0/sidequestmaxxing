@@ -606,9 +606,28 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   *different* `SpeechSynthesisVoice` (ranked by the voice names Windows/macOS/iOS/Android/Chrome
   actually ship, English-only, greedy so no two personas share one) plus its own rate and
   pitch, so the personas still differ on a machine with a single voice installed.
-  Voice ids are deliberately **not** hardcoded: ElevenLabs' help centre says default voices
-  expire 2026-12-31 and are only available to accounts created before March 2026, and points at
-  `GET /v1/voices` for current ids. Open question: the four `ELEVENLABS_VOICE_ID_*` keys are not
-  in `render.yaml` yet (env changes there need the owner's sign-off), so production uses one
-  ElevenLabs voice with four deliveries until they are added.
+  Voice ids were deliberately **not** hardcoded while unverified: ElevenLabs' help centre says
+  default voices expire 2026-12-31 and are only available to accounts created before March 2026,
+  and points at `GET /v1/voices` for current ids.
+
+  **Resolved 2026-10-11 (owner sign-off in chat).** With a real `ELEVENLABS_API_KEY` in place,
+  `GET /v1/voices` still 401s: the key is permission-scoped and carries neither `voices_read`
+  nor `user_read`, only text-to-speech. So the ids were verified the only way this key allows —
+  by synthesising through them. Each candidate was POSTed to
+  `/v1/text-to-speech/{id}/stream` with the exact payload the server sends; all four returned
+  `200` with real `mp3_44100_64` audio, and the byte counts track `speed` (dramatic 13001 B at
+  0.90 vs sarcastic 10076 B at 1.02), which confirms `voice_settings` is being applied and not
+  ignored. Assignments: chill `EXAVITQu4vr4xnSDxMaL` (Sarah, warm), dramatic
+  `JBFqnCBsd6RMkjVDRZzb` (George, deep narrator), nature_nerd `pFZP5JQG7iQjIQuC4Bku` (Lily,
+  bright), sarcastic `IKne3meq5aSn9XLyUdCD` (Charlie, dry). These are ElevenLabs' *shared
+  default* voices, so the ids are public identifiers rather than secrets — they are checked into
+  `render.yaml` as plain `value:` entries (not `sync: false`) so the blueprint stays
+  reproducible and the demo needs no dashboard typing. `ELEVENLABS_VOICE_ID` stays `sync: false`
+  so an existing dashboard value is not overridden.
+
+  Two consequences worth keeping in view. The ids are account-independent only while those
+  defaults exist: per the same help-centre note they lapse 2026-12-31, after which this needs
+  owned/cloned voices and a key with `voices_read`. And because `/v1/tts` is server-side, the
+  ElevenLabs voices are only audible when the API is reachable; with it down the browser
+  fallback in `speech.ts` still differentiates all four personas, which is why that layer exists.
 
