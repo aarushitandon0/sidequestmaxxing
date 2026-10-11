@@ -7,14 +7,14 @@ speaks it into your earbuds, and then gets out of the way so you can go outside 
 
 Built for the DEV **Touch Grass** challenge (Hacktoberfest Open-Source AI Challenge, Week 1).
 
-</div>
+
 <div align="center">
 
 
 <img src="apps/web/public/icon.svg" width="96" alt="Sidequestmaxxing logo: a parchment-coloured ridgeline under a gold sun, with a dotted trail running across it" />
 
 
-
+</div>
 ---
 
 ## What "sidequestmaxxing" means
