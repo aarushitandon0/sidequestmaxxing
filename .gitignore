@@ -30,3 +30,17 @@ models/
 # Rendered video/audio for the intro film (large binaries; keep out of git)
 media/*.mp4
 media/*.wav
+
+# Internal planning/process docs — not for judges, keep local only
+CLAUDE.md
+MASTERSPEC.md
+PROJECTPLAN.md
+.claude/
+.agents/
+.superpowers/
+docs/CLAUDE_CODE_PROMPTS.md
+docs/DEVRELAY.md
+docs/superpowers/
+
+# DEV challenge submission draft (lives on dev.to, not in the repo)
+DEVPOST.md
