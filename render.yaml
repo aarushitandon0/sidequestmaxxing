@@ -50,7 +50,7 @@ services:
           form-action 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'
           'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org;
           font-src 'self'; media-src 'self' blob:; worker-src 'self' blob:;
-          manifest-src 'self'; connect-src 'self' https://factor-coalition-lift-facilitate.trycloudflare.com
+          manifest-src 'self'; connect-src 'self' https://alexandria-miscellaneous-jumping-lawsuit.trycloudflare.com
           https://*.ingest.sentry.io https://*.ingest.us.sentry.io
     routes:
       - type: rewrite
@@ -58,7 +58,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://factor-coalition-lift-facilitate.trycloudflare.com  # TEMPORARY, see the header (D-98)
+        value: https://alexandria-miscellaneous-jumping-lawsuit.trycloudflare.com  # TEMPORARY, see the header (D-98)
       - key: VITE_SENTRY_DSN
         sync: false
       - key: VITE_GEMMA_MODEL_URL
@@ -98,6 +98,18 @@ services:
         sync: false
       - key: ELEVENLABS_VOICE_ID
         sync: false
+      # One voice per Dungeon Master. These are ElevenLabs' shared default voices, so the ids
+      # are public identifiers, not secrets — checked in so the blueprint stays reproducible.
+      # Each falls back to ELEVENLABS_VOICE_ID above when blank. Verified against the live TTS
+      # API on 2026-10-11 (docs/DECISIONS.md D-99).
+      - key: ELEVENLABS_VOICE_ID_CHILL
+        value: EXAVITQu4vr4xnSDxMaL
+      - key: ELEVENLABS_VOICE_ID_DRAMATIC
+        value: JBFqnCBsd6RMkjVDRZzb
+      - key: ELEVENLABS_VOICE_ID_NATURE_NERD
+        value: pFZP5JQG7iQjIQuC4Bku
+      - key: ELEVENLABS_VOICE_ID_SARCASTIC
+        value: IKne3meq5aSn9XLyUdCD
       - key: SENTRY_DSN
         sync: false
       - key: TTS_DAILY_CHAR_BUDGET
