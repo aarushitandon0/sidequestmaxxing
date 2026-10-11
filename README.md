@@ -1,3 +1,8 @@
+<div align="center">
+
+
+<img src="apps/web/public/icon.png" width="96" alt="Sidequestmaxxing logo: a parchment-coloured ridgeline under a gold sun, with a dotted trail running across it" />
+
 # Sidequestmaxxing
 
 **Your city is the game. Your phone is just the quest log.**
@@ -6,12 +11,6 @@ An open-weight Dungeon Master reads your neighbourhood, writes you one real side
 speaks it into your earbuds, and then gets out of the way so you can go outside and do it.
 
 Built for the DEV **Touch Grass** challenge (Hacktoberfest Open-Source AI Challenge, Week 1).
-
-
-<div align="center">
-
-
-<img src="apps/web/public/icon.png" width="96" alt="Sidequestmaxxing logo: a parchment-coloured ridgeline under a gold sun, with a dotted trail running across it" />
 
 
 </div>
