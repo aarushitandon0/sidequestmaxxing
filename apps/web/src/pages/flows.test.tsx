@@ -97,6 +97,35 @@ describe('Quest board', () => {
     expect(body).toMatchObject({ lat: 18.52, lng: 73.856 })
   })
 
+  it('lets a player who already chose change where they play', async () => {
+    // The chooser is first-run only, so without a way back to it the picker was
+    // unreachable for the rest of that browser's life and looked like it had gone.
+    savePrefs({ onboarded: true })
+    localStorage.setItem('sqm.location_choice', JSON.stringify('city:london'))
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) =>
+      String(url).includes('/generate') ? jsonResponse(QUEST) : jsonResponse(PROFILE),
+    )
+    renderAt('/home', <Home />)
+    expect(screen.getByText(/playing in london/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^change$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /pick a city instead/i }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Berlin' }))
+    })
+    const call = fetchSpy.mock.calls.find((c) => String(c[0]).includes('/generate'))!
+    const body = JSON.parse((call[1] as RequestInit).body as string)
+    expect(body).toMatchObject({ lat: 52.51, lng: 13.385 })
+    expect(localStorage.getItem('sqm.location_choice')).toBe(JSON.stringify('city:berlin'))
+  })
+
+  it('says it is using your own location when that is the stored choice', () => {
+    savePrefs({ onboarded: true })
+    localStorage.setItem('sqm.location_choice', JSON.stringify('device'))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(PROFILE))
+    renderAt('/home', <Home />)
+    expect(screen.getByText(/playing where you are/i)).toBeInTheDocument()
+  })
+
   it('shows a friendly rate-limit message', async () => {
     savePrefs({ onboarded: true })
     localStorage.setItem('sqm.location_choice', JSON.stringify('demo'))

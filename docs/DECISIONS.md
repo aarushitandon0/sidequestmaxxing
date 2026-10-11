@@ -631,3 +631,24 @@ Blocked by the egress policy: `devrelay.com`, `render.com`, `mongodb.com`, `open
   ElevenLabs voices are only audible when the API is reachable; with it down the browser
   fallback in `speech.ts` still differentiates all four personas, which is why that layer exists.
 
+- **D-100 — the city picker is reachable from the Quest Board, not only on a player's first
+  run.** Reported as "the location chooser is gone from the deployed version". It was not: the
+  live bundle at `sqm-web.onrender.com` contains `Pick a city instead` and the whole
+  `SEEDED_CITIES` list, and the API tunnel answered `/healthz` with `{"status":"ok","db":"ok"}`
+  at the time of the report. The cause was the gate in `useStartQuest.start`: it opens the
+  chooser only when `sqm.location_choice` is absent, and the only other path to
+  `status === 'consent'` was `pickAgain`, rendered solely inside the error alert. So the sheet
+  showed once per browser and then never again, and a player whose stored choice was `device`
+  in an unseeded area had no way back to it short of clearing site data. A fresh browser or
+  incognito window always looked fine, which is why it read as a deploy regression.
+
+  Fix: the board now says where the stored choice puts you — "Playing in London ·" / "Playing
+  where you are ·" — with a **Change** button next to it that reopens the chooser through the
+  existing `pickAgain`. The first-run behaviour and the "don't re-prompt a device that stored
+  `demo`" guarantee from D-93 are unchanged, and that test still passes; this
+  only adds a second door to the same sheet. Two tests cover it: changing a stored
+  `city:london` to Berlin reaches `/generate` with Berlin's centre and rewrites the stored
+  slug, and a stored `device` renders the "where you are" wording. Nothing was added to
+  Settings: the choice belongs next to the button it affects, and the board line doubles as the
+  demo's visible proof of which city the quest came from.
+

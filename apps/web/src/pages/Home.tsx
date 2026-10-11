@@ -209,10 +209,20 @@ export function Home() {
                     ) : busy ? (
                       <Thinking persona={prefs.persona} label={start.status === 'locating' ? 'Finding your corner of the map…' : undefined} />
                     ) : (
-                      <button type="button" className="btn btn-wood w-full py-4 text-2xl" onClick={start.start}
-                        disabled={run.phase === 'offered'}>
-                        Get a quest <ArrowRightIcon />
-                      </button>
+                      <>
+                        <button type="button" className="btn btn-wood w-full py-4 text-2xl" onClick={start.start}
+                          disabled={run.phase === 'offered'}>
+                          Get a quest <ArrowRightIcon />
+                        </button>
+                        {start.where ? (
+                          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 text-ink-soft">
+                            <span>{`Playing ${start.where} ·`}</span>
+                            <button type="button" className="min-h-11 underline" onClick={start.pickAgain}>
+                              Change
+                            </button>
+                          </div>
+                        ) : null}
+                      </>
                     )}
                     {start.status === 'error' && start.error ? (
                       <div role="alert" className="mt-3 rounded-xl border-2 border-berry/40 bg-parchment-light p-3 text-berry">

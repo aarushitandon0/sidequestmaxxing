@@ -24,6 +24,17 @@ function chosenArea(choice: Exclude<LocationChoice, 'device'>): Coarse {
   return city ? coarse(city.lat, city.lng) : DEMO_AREA
 }
 
+/**
+ * How to finish the sentence "Playing …" on the Quest Board. The board says where the
+ * stored choice puts the player, next to a way to change it: the chooser only opens when
+ * no choice is stored, so without this the picker was a one-time offer per browser.
+ */
+export function placeLabel(choice: LocationChoice): string {
+  if (choice === 'device') return 'where you are'
+  if (choice === 'demo') return 'in Pune'
+  return `in ${findCity(choice.slice('city:'.length))?.name ?? 'Pune'}`
+}
+
 export type StartStatus = 'idle' | 'consent' | 'locating' | 'thinking' | 'error'
 
 const LOCATION_MESSAGES: Record<LocationError, string> = {
@@ -38,6 +49,7 @@ export function useStartQuest(prefs: Prefs) {
   const { offer } = useQuest()
   const navigate = useNavigate()
   const [status, setStatus] = useState<StartStatus>('idle')
+  const [choice, setChoice] = useState<LocationChoice | null>(() => readJson<LocationChoice>(CHOICE_KEY))
   const [error, setError] = useState<string | null>(null)
   const [rateLimited, setRateLimited] = useState(false)
 
@@ -65,6 +77,7 @@ export function useStartQuest(prefs: Prefs) {
   const withChoice = useCallback(
     async (choice: LocationChoice) => {
       writeJson(CHOICE_KEY, choice)
+      setChoice(choice)
       if (choice !== 'device') return generate(chosenArea(choice))
       setStatus('locating')
       try {
@@ -86,12 +99,22 @@ export function useStartQuest(prefs: Prefs) {
     void withChoice(choice)
   }, [withChoice])
 
-  // Back to the chooser after a failure, so "pick a city instead" is one tap and not a
-  // forced trip through the demo area.
+  // Back to the chooser: after a failure, so "pick a city instead" is one tap and not a
+  // forced trip through the demo area, and from the board's "Change", so a stored choice
+  // is not permanent.
   const pickAgain = useCallback(() => {
     setError(null)
     setStatus('consent')
   }, [])
 
-  return { status, error, rateLimited, start, withChoice, pickAgain, cancel: () => setStatus('idle') }
+  return {
+    status,
+    error,
+    rateLimited,
+    where: choice ? placeLabel(choice) : null,
+    start,
+    withChoice,
+    pickAgain,
+    cancel: () => setStatus('idle'),
+  }
 }
