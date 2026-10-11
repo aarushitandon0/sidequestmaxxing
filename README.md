@@ -11,7 +11,7 @@ Built for the DEV **Touch Grass** challenge (Hacktoberfest Open-Source AI Challe
 <div align="center">
 
 
-<img src="apps/web/public/icon.svg" width="96" alt="Sidequestmaxxing logo: a parchment-coloured ridgeline under a gold sun, with a dotted trail running across it" />
+<img src="apps/web/public/icon.png" width="96" alt="Sidequestmaxxing logo: a parchment-coloured ridgeline under a gold sun, with a dotted trail running across it" />
 
 
 </div>
@@ -46,7 +46,7 @@ The whole thing is built around one rule taken from the challenge brief: **the s
 shortest part of the experience.** Every design decision below falls out of that rule.
 
 <p align="center">
-  <img src="docs/img/core-loop.svg" width="100%" alt="Six steps: open the app for about twenty seconds while it reads time, weather, daylight and mood; receive one quest grounded in a real nearby place; hear it spoken aloud; enter Walk Mode where the screen goes near-black and you leave; come back and take one photo that a model on your own phone checks; then claim XP, level-ups and a weekly chronicle. A timeline underneath shows the screen is on only at the start, for one photo, and at the reward." />
+  <img src="docs/img/core-loop.png" width="100%" alt="Six steps: open the app for about twenty seconds while it reads time, weather, daylight and mood; receive one quest grounded in a real nearby place; hear it spoken aloud; enter Walk Mode where the screen goes near-black and you leave; come back and take one photo that a model on your own phone checks; then claim XP, level-ups and a weekly chronicle. A timeline underneath shows the screen is on only at the start, for one photo, and at the reward." />
 </p>
 
 ---
@@ -143,7 +143,7 @@ Being honest, because the write-up guidance in this repo demands it:
 ## System architecture
 
 <p align="center">
-  <img src="docs/img/architecture.svg" width="100%" alt="Three layers. On the player's device, a React PWA runs Walk Mode, a screen-time tracker, a local field log, and an on-device Gemma 3n photo verifier. Over HTTPS with coordinates rounded to three decimals, the device talks to Render, which runs three services from one Blueprint: sqm-web static site, sqm-api FastAPI service holding the Context Builder, Scout, Quest Master client, validators, fallback engine, XP and memory, Chronicler and TTS proxy, and sqm-llm, a private llama.cpp server holding the fine-tuned GGUF on a 10 GB disk. Below sit hosted services, each with a fallback: MongoDB Atlas, Sentry, ElevenLabs, Open-Meteo and Overpass." />
+  <img src="docs/img/architecture.png" width="100%" alt="Three layers. On the player's device, a React PWA runs Walk Mode, a screen-time tracker, a local field log, and an on-device Gemma 3n photo verifier. Over HTTPS with coordinates rounded to three decimals, the device talks to Render, which runs three services from one Blueprint: sqm-web static site, sqm-api FastAPI service holding the Context Builder, Scout, Quest Master client, validators, fallback engine, XP and memory, Chronicler and TTS proxy, and sqm-llm, a private llama.cpp server holding the fine-tuned GGUF on a 10 GB disk. Below sit hosted services, each with a fallback: MongoDB Atlas, Sentry, ElevenLabs, Open-Meteo and Overpass." />
 </p>
 
 Three services, one `render.yaml` Blueprint, no orchestration framework.
@@ -206,7 +206,7 @@ these are covered by tests.
 ## How one quest gets made
 
 <p align="center">
-  <img src="docs/img/quest-pipeline.svg" width="100%" alt="A request with coarse coordinates, minutes available, radius, mood, sanitized interests and persona enters the API. The Context Builder adds time, daylight and weather, deciding indoor_only. The Scout searches a three by three block of geohash-5 cells with Atlas vector search, filters by distance, safety and time, and caps at three per place kind for at most eight candidates. A memory check drops themes done in the last fourteen days. The Quest Master is called with JSON-schema constrained decoding. The draft runs through validators V1 to V12; one failure triggers a retry with the reasons appended, a second failure or a timeout hands over to a deterministic fallback engine. Only then does the server assign the id, rarity and XP." />
+  <img src="docs/img/quest-pipeline.png" width="100%" alt="A request with coarse coordinates, minutes available, radius, mood, sanitized interests and persona enters the API. The Context Builder adds time, daylight and weather, deciding indoor_only. The Scout searches a three by three block of geohash-5 cells with Atlas vector search, filters by distance, safety and time, and caps at three per place kind for at most eight candidates. A memory check drops themes done in the last fourteen days. The Quest Master is called with JSON-schema constrained decoding. The draft runs through validators V1 to V12; one failure triggers a retry with the reasons appended, a second failure or a timeout hands over to a deterministic fallback engine. Only then does the server assign the id, rarity and XP." />
 </p>
 
 ### 1. Context Builder (deterministic, no model involved)
@@ -438,7 +438,7 @@ a test holding it honest in both directions.
 ## Privacy: what crosses the network, and what does not
 
 <p align="center">
-  <img src="docs/img/privacy-boundary.svg" width="100%" alt="On the left, things that never leave the device: the photo (the API has no upload endpoint), the precise GPS position, the Gemma 3n verifier and its inference, and the field-test log in localStorage. On the right, everything the server receives: a random device UUID, coordinates rounded to three decimals, enum-only mood and persona with sanitized interests, the verification verdict, elapsed and visible seconds, place ids with public OSM coordinates, and within_radius as a boolean. A footer states the honest limit: this is not a fully offline app." />
+  <img src="docs/img/privacy-boundary.png" width="100%" alt="On the left, things that never leave the device: the photo (the API has no upload endpoint), the precise GPS position, the Gemma 3n verifier and its inference, and the field-test log in localStorage. On the right, everything the server receives: a random device UUID, coordinates rounded to three decimals, enum-only mood and persona with sanitized interests, the verification verdict, elapsed and visible seconds, place ids with public OSM coordinates, and within_radius as a boolean. A footer states the honest limit: this is not a fully offline app." />
 </p>
 
 Specifics, each one backed by a test rather than a comment:
@@ -661,7 +661,7 @@ allow-lists, no wildcard and no credentials. In production the interactive schem
 ## Training and evaluation
 
 <p align="center">
-  <img src="docs/img/training-pipeline.svg" width="100%" alt="Places seeded from OpenStreetMap into Atlas are sampled into 3,220 contexts split by area so test places are unseen. A large open-weight teacher sampled through Tinker writes drafts, which the production validators filter and deduplicate into roughly 2,900 JSONL chat rows carrying the byte-identical production system prompt. A LoRA fine-tune on Tinker sweeps three learning rates over three epochs. The adapter is merged, converted to GGUF, quantized to Q4_K_M, published to Hugging Face and pulled onto the sqm-llm disk. Evaluation runs against that exact served file on 120 held-out contexts. A status note records that the paid run and export have not been executed." />
+  <img src="docs/img/training-pipeline.png" width="100%" alt="Places seeded from OpenStreetMap into Atlas are sampled into 3,220 contexts split by area so test places are unseen. A large open-weight teacher sampled through Tinker writes drafts, which the production validators filter and deduplicate into roughly 2,900 JSONL chat rows carrying the byte-identical production system prompt. A LoRA fine-tune on Tinker sweeps three learning rates over three epochs. The adapter is merged, converted to GGUF, quantized to Q4_K_M, published to Hugging Face and pulled onto the sqm-llm disk. Evaluation runs against that exact served file on 120 held-out contexts. A status note records that the paid run and export have not been executed." />
 </p>
 
 ### Data
